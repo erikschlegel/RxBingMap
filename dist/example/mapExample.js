@@ -46,7 +46,6 @@ var RxBing = (function () {
 		_classCallCheck(this, RxBing);
 
 		var fromEvent = _rx2['default'].Observable.fromEvent;
-
 		this.options = options;
 		this.MapReferenceId = options.MapReferenceId;
 		//utils.include(pkg.BingMapsLibrary);
@@ -65,6 +64,23 @@ var RxBing = (function () {
 		value: function render() {
 			var options = (0, _extend2['default'])(true, {}, this.defaultOptions(), this.options);
 			this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
+
+			var RxSource = this.transformBingEventsToRxStream(this.map, 'map.click');
+			RxSource.subscribe(this.options.mapClickHandler);
+		}
+	}, {
+		key: 'transformBingEventsToRxStream',
+		value: function transformBingEventsToRxStream(map, action) {
+			var fromEventPattern = _rx2['default'].Observable.fromEventPattern;
+			var handlerIdMap = {};
+
+			var RxEvents = fromEventPattern(function add(h) {
+				handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, 'click', h);
+			}, function remove(h) {
+				Microsoft.Maps.Events.removeHandler(handlerIdMap[action]);
+			});
+
+			return RxEvents;
 		}
 	}, {
 		key: 'UseBingTheme',
@@ -94,14 +110,23 @@ module.exports = exports['default'];
 "use strict";
 
 function _interopRequireDefault(obj) {
-  return obj && obj.__esModule ? obj : { "default": obj };
+													return obj && obj.__esModule ? obj : { "default": obj };
 }
 
 var _RxBing = require('../RxBing');
 
 var _RxBing2 = _interopRequireDefault(_RxBing);
 
-var map = new _RxBing2["default"]({ MapReferenceId: "mapDiv", credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5", BingTheme: true });
+var map = new _RxBing2["default"]({ MapReferenceId: "mapDiv",
+													credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
+													BingTheme: true,
+													mapClickHandler: function mapClickHandler(result) {
+																										if (result.targetType == "map") {
+																																							var point = new Microsoft.Maps.Point(result.getX(), result.getY());
+																																							var loc = result.target.tryPixelToLocation(point);
+																																							console.log("Clicked " + loc.latitude + ", " + loc.longitude);
+																										}
+													} });
 
 },{"../RxBing":1}],3:[function(require,module,exports){
 "use strict";

@@ -6,12 +6,11 @@ import extend from 'extend';
 export default class RxBing {
 	constructor(options){
 		let fromEvent = Rx.Observable.fromEvent;
-		
 		this.options = options;
 		this.MapReferenceId = options.MapReferenceId;
 		//utils.include(pkg.BingMapsLibrary);
 		fromEvent(document.body, 'load')
-	   .subscribe(this.initialize());
+	   .subscribe(this.initialize());	   
 	}
 
 	initialize(){
@@ -25,10 +24,24 @@ export default class RxBing {
 		let options = extend(true, {}, this.defaultOptions(), this.options);
 		this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
 
-		let fromEvent = Rx.Observable.fromEvent;
+		var RxSource = this.transformBingEventsToRxStream(this.map, 'map.click');
+		RxSource.subscribe(this.options.mapClickHandler);
+	}
 
-		fromEvent(this.map, 'click');
-		fromEvent.subscribe(this.options.mapClickHandler);
+	transformBingEventsToRxStream(map, action){
+		var fromEventPattern = Rx.Observable.fromEventPattern;
+		let handlerIdMap = {};
+
+		var RxEvents = fromEventPattern(
+		    function add (h) {
+		        handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, 'click', h);
+		    },
+		    function remove (h) {
+		        Microsoft.Maps.Events.removeHandler(handlerIdMap[action]);
+		    }
+		);
+
+		return RxEvents;
 	}
 
 	UseBingTheme(){
