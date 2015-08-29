@@ -1,6 +1,7 @@
 import utils from './lib/utils';
 import pkg from './package.json';
 import Rx from 'rx';
+import RxDom from 'rx-dom';
 import extend from 'extend';
 
 export default class RxBing {
@@ -20,10 +21,27 @@ export default class RxBing {
 		this.render();
 	}
 
+	setCurrentPosition(){
+	    if (navigator && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                let options = this.map.getOptions();
+
+                if (options) {
+                    let lat = position.coords.latitude;
+                    let lon = position.coords.longitude;
+                    options.center = new Microsoft.Maps.Location(lat, lon);
+                }
+
+                this.map.setView(options);
+            });
+        }
+	}
+
 	render(){
 		let options = extend(true, {}, this.defaultOptions(), this.options);
+		
 		this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
-
+		this.setCurrentPosition();	
 		var RxSource = this.transformBingEventsToRxStream(this.map, 'map.click');
 		RxSource.subscribe(this.options.mapClickHandler);
 	}
@@ -50,7 +68,9 @@ export default class RxBing {
 
 	defaultOptions(){
 		return {
-			mapTypeId: Microsoft.Maps.MapTypeId.road
+			mapTypeId: Microsoft.Maps.MapTypeId.road,
+			enableHighDpi: true,
+			zoom: 12
 		}
 	}
 }
