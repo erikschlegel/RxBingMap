@@ -1,0 +1,14 @@
+{
+  "name": "RxBing",
+  "version": "0.0.0",
+  "authors": [
+    "Erik Schelgel"
+  ],
+  "moduleType": [
+    "globals"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "font-awesome": "~4.4.0"
+ }
+}

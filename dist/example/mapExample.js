@@ -113,6 +113,9 @@ var RxBing = (function () {
 				'longitude': coordinates.longitude
 			};
 			this.map.setView(mapConfig);
+
+			var geoLocationProvider = new Microsoft.Maps.GeoLocationProvider(this.map);
+			geoLocationProvider.getCurrentPosition();
 		}
 	}, {
 		key: 'render',
@@ -120,7 +123,7 @@ var RxBing = (function () {
 			var options = (0, _extend2['default'])(true, {}, this.defaultOptions(), this.options);
 
 			this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
-			this.setCurrentPosition();
+			if (options.CenterMap) this.setCurrentPosition();
 		}
 	}, {
 		key: 'pushPins',
@@ -175,7 +178,7 @@ module.exports = exports['default'];
 "use strict";
 
 function _interopRequireDefault(obj) {
-					return obj && obj.__esModule ? obj : { "default": obj };
+     return obj && obj.__esModule ? obj : { "default": obj };
 }
 
 var _RxBing = require('../RxBing');
@@ -183,22 +186,30 @@ var _RxBing = require('../RxBing');
 var _RxBing2 = _interopRequireDefault(_RxBing);
 
 var map = new _RxBing2["default"]({ MapReferenceId: "mapDiv",
-					credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
-					BingTheme: true });
+     credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
+     BingTheme: true,
+     CenterMap: true });
 
 map.registerMapHandlers({ click: function click(result) {
-										if (result.targetType == "map") {
-															var point = new Microsoft.Maps.Point(result.getX(), result.getY());
-															var loc = result.target.tryPixelToLocation(point);
-															var coords = {
-																				'latitude': loc.latitude,
-																				'longitude': loc.longitude
-															};
+          if (result.targetType == "map") {
+               var point = new Microsoft.Maps.Point(result.getX(), result.getY());
+               var loc = result.target.tryPixelToLocation(point);
+               var coords = {
+                    'latitude': loc.latitude,
+                    'longitude': loc.longitude
+               };
 
-															map.pushPins([new Microsoft.Maps.Pushpin(coords, { width: 50, height: 50, draggable: true })]);
-															//console.log("Clicked " + loc.latitude + ", " + loc.longitude);
-										}
-					} });
+               var pinOpts = {
+                    htmlContent: '<i class="fa fa-map-pin fa-2x"></i>',
+                    width: 50,
+                    height: 50,
+                    draggable: true
+               };
+
+               map.pushPins([new Microsoft.Maps.Pushpin(coords, pinOpts)]);
+               //console.log("Clicked " + loc.latitude + ", " + loc.longitude);
+          }
+     } });
 //map.centerMap({latitude: 40.735803, longitude: -74.001374});
 
 },{"../RxBing":1}],3:[function(require,module,exports){
@@ -18704,6 +18715,7 @@ module.exports={
   },
   "dependencies": {
     "rx" : "*",
+    "font-awesome": "*",
     "extend": "^3.0.0",
     "rx-dom" : "*"    
   },

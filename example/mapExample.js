@@ -2,7 +2,8 @@ import RxBing from '../RxBing';
 
 var map = new RxBing({MapReferenceId: "mapDiv", 
 					  credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5", 
-					  BingTheme: true});
+					  BingTheme: true,
+					  CenterMap: true});
 
 map.registerMapHandlers({click: (result) => {
 					  	      if(result.targetType == "map"){
@@ -13,7 +14,14 @@ map.registerMapHandlers({click: (result) => {
                     					'longitude': loc.longitude
                 					};
 
-					  	      	  	map.pushPins([new Microsoft.Maps.Pushpin(coords, {width: 50, height: 50, draggable: true})]);
+                					let pinOpts = {
+                						htmlContent: '<i class="fa fa-map-pin fa-2x"></i>',
+                						width: 50, 
+                						height: 50, 
+                						draggable: true
+                					};
+
+					  	      	  	map.pushPins([new Microsoft.Maps.Pushpin(coords, pinOpts)]);
 					  	      	  //console.log("Clicked " + loc.latitude + ", " + loc.longitude);
 					  	      }
 					  }});

@@ -2,6 +2,16 @@ var pkg = require('./package.json');
 
 module.exports = function (grunt) {
   grunt.initConfig({
+        bower: {
+            install: {
+                options: {
+                    targetDir: 'vendor',
+                    cleanTargetDir: true,
+                    cleanBowerDir: true                    
+               }
+            }
+        },
+        
         browserify: {
             lib: {
                 src: pkg.main,
@@ -15,6 +25,7 @@ module.exports = function (grunt) {
         }
     });
 
+    grunt.loadNpmTasks('grunt-bower-task');
     grunt.loadNpmTasks("grunt-browserify");
-    grunt.registerTask('build', ['browserify:lib']);
+    grunt.registerTask('build', ['bower', 'browserify:lib']);
 };

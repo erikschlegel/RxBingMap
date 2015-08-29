@@ -63,14 +63,17 @@ export default class RxBing {
                 'longitude': coordinates.longitude
             };
             this.map.setView(mapConfig);
+
+            let geoLocationProvider = new Microsoft.Maps.GeoLocationProvider(this.map);
+            geoLocationProvider.getCurrentPosition();
 	}
 
 	render(){
 		let options = extend(true, {}, this.defaultOptions(), this.options);
 		
 		this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
-		this.setCurrentPosition();	
-		
+		if(options.CenterMap)
+			this.setCurrentPosition();
 	}
 
 	pushPins(pinSet){
