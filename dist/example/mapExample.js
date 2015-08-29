@@ -64,20 +64,26 @@ var RxBing = (function () {
 			this.render();
 		}
 	}, {
+		key: 'registerMapHandlers',
+		value: function registerMapHandlers(customHandlers) {
+			var _this = this;
+
+			Object.keys(customHandlers).forEach(function (eventName) {
+				if (customHandlers.hasOwnProperty(eventName) && typeof customHandlers[eventName] === "function") {
+					var RxSource = _this.transformBingEventsToRxStream(_this.map, eventName);
+					RxSource.subscribe(customHandlers[eventName]);
+				}
+			});
+		}
+	}, {
 		key: 'setCurrentPosition',
 		value: function setCurrentPosition() {
-			var _this = this;
+			var _this2 = this;
 
 			var source = _rx2['default'].DOM.geolocation.getCurrentPosition();
 
-			var subscription = source.subscribe(function (pos) {
-				var options = _this.map.getOptions();
-				if (options) {
-					var latitude = pos.coords.latitude;
-					var longitude = pos.coords.longitude;
-					options.center = new Microsoft.Maps.Location(latitude, longitude);
-					_this.map.setView(options);
-				}
+			var subscription = source.subscribe(function (myLocay) {
+				return _this2.centerMap(myLocay.coords);
 			}, function (err) {
 				var message = '';
 				switch (err.code) {
@@ -97,14 +103,33 @@ var RxBing = (function () {
 			});
 		}
 	}, {
+		key: 'centerMap',
+		value: function centerMap(coordinates) {
+			var mapConfig = this.map.getOptions();
+
+			mapConfig.zoom = 15;
+			mapConfig.center = {
+				'latitude': coordinates.latitude,
+				'longitude': coordinates.longitude
+			};
+			this.map.setView(mapConfig);
+		}
+	}, {
 		key: 'render',
 		value: function render() {
 			var options = (0, _extend2['default'])(true, {}, this.defaultOptions(), this.options);
 
 			this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
 			this.setCurrentPosition();
-			var RxSource = this.transformBingEventsToRxStream(this.map, 'map.click');
-			RxSource.subscribe(this.options.mapClickHandler);
+		}
+	}, {
+		key: 'pushPins',
+		value: function pushPins(pinSet) {
+			var _this3 = this;
+
+			var source = _rx2['default'].Observable.from(pinSet).subscribe(function (pinMe) {
+				_this3.map.entities.push(pinMe);
+			});
 		}
 	}, {
 		key: 'transformBingEventsToRxStream',
@@ -113,7 +138,7 @@ var RxBing = (function () {
 			var handlerIdMap = {};
 
 			var RxEvents = fromEventPattern(function add(h) {
-				handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, 'click', h);
+				handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, action, h);
 			}, function remove(h) {
 				Microsoft.Maps.Events.removeHandler(handlerIdMap[action]);
 			});
@@ -123,10 +148,10 @@ var RxBing = (function () {
 	}, {
 		key: 'UseBingTheme',
 		value: function UseBingTheme() {
-			var _this2 = this;
+			var _this4 = this;
 
 			Microsoft.Maps.loadModule('Microsoft.Maps.Themes.BingTheme', { callback: function callback() {
-					return _this2.options = (0, _extend2['default'])(true, {}, _this2.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
+					return _this4.options = (0, _extend2['default'])(true, {}, _this4.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
 				} });
 		}
 	}, {
@@ -150,7 +175,7 @@ module.exports = exports['default'];
 "use strict";
 
 function _interopRequireDefault(obj) {
-													return obj && obj.__esModule ? obj : { "default": obj };
+					return obj && obj.__esModule ? obj : { "default": obj };
 }
 
 var _RxBing = require('../RxBing');
@@ -158,15 +183,23 @@ var _RxBing = require('../RxBing');
 var _RxBing2 = _interopRequireDefault(_RxBing);
 
 var map = new _RxBing2["default"]({ MapReferenceId: "mapDiv",
-													credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
-													BingTheme: true,
-													mapClickHandler: function mapClickHandler(result) {
-																										if (result.targetType == "map") {
-																																							var point = new Microsoft.Maps.Point(result.getX(), result.getY());
-																																							var loc = result.target.tryPixelToLocation(point);
-																																							console.log("Clicked " + loc.latitude + ", " + loc.longitude);
-																										}
-													} });
+					credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
+					BingTheme: true });
+
+map.registerMapHandlers({ click: function click(result) {
+										if (result.targetType == "map") {
+															var point = new Microsoft.Maps.Point(result.getX(), result.getY());
+															var loc = result.target.tryPixelToLocation(point);
+															var coords = {
+																				'latitude': loc.latitude,
+																				'longitude': loc.longitude
+															};
+
+															map.pushPins([new Microsoft.Maps.Pushpin(coords, { width: 50, height: 50, draggable: true })]);
+															//console.log("Clicked " + loc.latitude + ", " + loc.longitude);
+										}
+					} });
+//map.centerMap({latitude: 40.735803, longitude: -74.001374});
 
 },{"../RxBing":1}],3:[function(require,module,exports){
 "use strict";

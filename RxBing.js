@@ -21,18 +21,19 @@ export default class RxBing {
 		this.render();
 	}
 
+	registerMapHandlers(customHandlers){
+		Object.keys(customHandlers).forEach((eventName) => {
+		   if(customHandlers.hasOwnProperty(eventName) && typeof customHandlers[eventName] === "function"){
+		   		var RxSource = this.transformBingEventsToRxStream(this.map, eventName);
+ 			    RxSource.subscribe(customHandlers[eventName]);
+	  	   }
+		});
+	}
+
 	setCurrentPosition(){
 		var source = Rx.DOM.geolocation.getCurrentPosition();
 
-		var subscription = source.subscribe( pos => {
-			    let options = this.map.getOptions();
-                if (options) {
-                    let latitude = pos.coords.latitude;
-                    let longitude = pos.coords.longitude;
-                    options.center = new Microsoft.Maps.Location(latitude, longitude);
-                	this.map.setView(options);
-                }
-		  },
+		var subscription = source.subscribe( myLocay => this.centerMap(myLocay.coords),
 		  function (err) {
 		    var message = '';
 		    switch (err.code) {
@@ -53,13 +54,30 @@ export default class RxBing {
 		  });
 	}
 
+	centerMap(coordinates){
+		    let mapConfig = this.map.getOptions();
+
+            mapConfig.zoom = 15;
+            mapConfig.center = {
+                'latitude': coordinates.latitude,
+                'longitude': coordinates.longitude
+            };
+            this.map.setView(mapConfig);
+	}
+
 	render(){
 		let options = extend(true, {}, this.defaultOptions(), this.options);
 		
 		this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
 		this.setCurrentPosition();	
-		var RxSource = this.transformBingEventsToRxStream(this.map, 'map.click');
-		RxSource.subscribe(this.options.mapClickHandler);
+		
+	}
+
+	pushPins(pinSet){
+		let source = Rx.Observable.from(pinSet)
+					.subscribe( (pinMe) => {
+							this.map.entities.push(pinMe);
+						});
 	}
 
 	transformBingEventsToRxStream(map, action){
@@ -68,7 +86,7 @@ export default class RxBing {
 
 		var RxEvents = fromEventPattern(
 		    function add (h) {
-		        handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, 'click', h);
+		        handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, action, h);
 		    },
 		    function remove (h) {
 		        Microsoft.Maps.Events.removeHandler(handlerIdMap[action]);
