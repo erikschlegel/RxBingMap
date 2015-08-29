@@ -15,10 +15,9 @@ map.registerMapHandlers({click: (result) => {
                 					};
 
                 					let pinOpts = {
-                						htmlContent: '<i class="fa fa-map-pin fa-2x"></i>',
-                						width: 50, 
-                						height: 50, 
-                						draggable: true
+                						htmlContent: '<i style="color: orange; margin:0px 0px 0px 0px;" class="fa fa-map-pin"></i>',
+                						draggable: true,
+                						textOffset: new Microsoft.Maps.Point(0, 0)
                 					};
 
 					  	      	  	map.pushPins([new Microsoft.Maps.Pushpin(coords, pinOpts)]);
