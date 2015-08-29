@@ -22,19 +22,35 @@ export default class RxBing {
 	}
 
 	setCurrentPosition(){
-	    if (navigator && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
-                let options = this.map.getOptions();
+		var source = Rx.DOM.geolocation.getCurrentPosition();
 
+		var subscription = source.subscribe( pos => {
+			    let options = this.map.getOptions();
                 if (options) {
-                    let lat = position.coords.latitude;
-                    let lon = position.coords.longitude;
-                    options.center = new Microsoft.Maps.Location(lat, lon);
+                    let latitude = pos.coords.latitude;
+                    let longitude = pos.coords.longitude;
+                    options.center = new Microsoft.Maps.Location(latitude, longitude);
+                	this.map.setView(options);
                 }
-
-                this.map.setView(options);
-            });
-        }
+		  },
+		  function (err) {
+		    var message = '';
+		    switch (err.code) {
+		      case err.PERMISSION_DENIED:
+		        message = 'Permission denied';
+		        break;
+		      case err.POSITION_UNAVAILABLE:
+		        message = 'Position unavailable';
+		        break;
+		      case err.PERMISSION_DENIED_TIMEOUT:
+		        message = 'Position timeout';
+		        break;
+		    }
+		    console.log('Error: ' + message);
+		  },
+		  function () {
+		    console.log('Completed');
+		  });
 	}
 
 	render(){

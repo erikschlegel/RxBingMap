@@ -68,19 +68,33 @@ var RxBing = (function () {
 		value: function setCurrentPosition() {
 			var _this = this;
 
-			if (navigator && navigator.geolocation) {
-				navigator.geolocation.getCurrentPosition(function (position) {
-					var options = _this.map.getOptions();
+			var source = _rx2['default'].DOM.geolocation.getCurrentPosition();
 
-					if (options) {
-						var lat = position.coords.latitude;
-						var lon = position.coords.longitude;
-						options.center = new Microsoft.Maps.Location(lat, lon);
-					}
-
+			var subscription = source.subscribe(function (pos) {
+				var options = _this.map.getOptions();
+				if (options) {
+					var latitude = pos.coords.latitude;
+					var longitude = pos.coords.longitude;
+					options.center = new Microsoft.Maps.Location(latitude, longitude);
 					_this.map.setView(options);
-				});
-			}
+				}
+			}, function (err) {
+				var message = '';
+				switch (err.code) {
+					case err.PERMISSION_DENIED:
+						message = 'Permission denied';
+						break;
+					case err.POSITION_UNAVAILABLE:
+						message = 'Position unavailable';
+						break;
+					case err.PERMISSION_DENIED_TIMEOUT:
+						message = 'Position timeout';
+						break;
+				}
+				console.log('Error: ' + message);
+			}, function () {
+				console.log('Completed');
+			});
 		}
 	}, {
 		key: 'render',
