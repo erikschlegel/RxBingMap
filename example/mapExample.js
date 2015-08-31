@@ -1,9 +1,11 @@
 import RxBing from '../RxBing';
+import BingServices from 'machinepack-rxbingservices';
 
 var map = new RxBing({MapReferenceId: "mapDiv", 
 					  credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5", 
 					  BingTheme: true,
-					  CenterMap: true});
+					  CenterMap: true,
+					  ShowTraffic: true});
 
 map.registerMapHandlers({click: (result) => {
 					  	      if(result.targetType == "map"){
@@ -24,4 +26,20 @@ map.registerMapHandlers({click: (result) => {
 					  	      	  //console.log("Clicked " + loc.latitude + ", " + loc.longitude);
 					  	      }
 					  }});
+
+BingServices.whatsAroundMe({
+  apiKey: 'x',
+  location: '40.735803,-74.001374',
+  top: 20,
+  radius: 1
+}).exec({
+  // An unexpected error occurred.
+  error: function (e){
+  	console.log('Received an error:\n', e);
+  },
+  // OK.
+  success: function (result){
+    console.log('Got:\n', result);
+  },
+});
 //map.centerMap({latitude: 40.735803, longitude: -74.001374});

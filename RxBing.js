@@ -74,6 +74,13 @@ export default class RxBing {
 		this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
 		if(options.CenterMap)
 			this.setCurrentPosition();
+
+		if(options.ShowTraffic)
+			this.showTraffic();
+	}
+
+	showTraffic(){
+		Microsoft.Maps.loadModule('Microsoft.Maps.Traffic', { callback: () => new Microsoft.Maps.Traffic.TrafficManager(this.map).show()});
 	}
 
 	pushPins(pinSet){

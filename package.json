@@ -30,15 +30,16 @@
     "jscs": "^2.1.0"
   },
   "dependencies": {
-    "rx" : "*",
-    "font-awesome": "*",
     "extend": "^3.0.0",
-    "rx-dom" : "*"    
+    "font-awesome": "*",
+    "machinepack-rxbing": "*",
+    "rx": "*",
+    "rx-dom": "*"
   },
   "browserify": {
-        "transform": [
-            "babelify"
-        ]
+    "transform": [
+      "babelify"
+    ]
   },
   "scripts": {
     "test": "grunt build",
