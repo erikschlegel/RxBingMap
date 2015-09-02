@@ -22,10 +22,14 @@ export default class RxBing {
 	}
 
 	registerMapHandlers(customHandlers){
+		this.registerRxEventSequence(customHandlers, this.map);
+	}
+
+	registerRxEventSequence(customHandlers, srcObject){
 		Object.keys(customHandlers).forEach((eventName) => {
 		   if(customHandlers.hasOwnProperty(eventName) && typeof customHandlers[eventName] === "function"){
-		   		var RxSource = this.transformBingEventsToRxStream(this.map, eventName);
- 			    RxSource.subscribe(customHandlers[eventName]);
+		   		var RxSource = this.transformBingEventsToRxStream(srcObject, eventName);
+ 			    RxSource.subscribe(customHandlers[eventName], (error) => console.log('Event Handler occured for ' + eventName + ' Err: ' + error));
 	  	   }
 		});
 	}
@@ -83,20 +87,44 @@ export default class RxBing {
 		Microsoft.Maps.loadModule('Microsoft.Maps.Traffic', { callback: () => new Microsoft.Maps.Traffic.TrafficManager(this.map).show()});
 	}
 
-	pushPins(pinSet){
+	pushPins(pinSet, customHandlers){
 		let source = Rx.Observable.from(pinSet)
 					.subscribe( (pinMe) => {
+							if(customHandlers)
+								this.registerRxEventSequence(customHandlers, pinMe);
+
 							this.map.entities.push(pinMe);
-						});
+							createTooltip(pinMe);
+					} , (error) => console.log('An error occured adding the pin set to the map: ' + error));
 	}
 
-	transformBingEventsToRxStream(map, action){
+	createTooltip(pin){
+		if(pin.tooltip){
+			let domTarget = pin.cm1002_er_etr.dom,
+                container = '.' + pin.tooltipCssAlias + '_container_bottom', wt, ml;
+
+                let tooltip = "<div class='{0}'><div class='{1}_content'>{2}</div></div>".format(container, pin.tooltipCssAlias, pin.tooltip);
+
+                $(domTarget).after(tooltip);
+
+                wt = $(container).outerWidth();
+                ml = -(wt / 2 + 20);
+
+                $(container).css('top', e.pageY + 20);
+                $(container).css('left', e.pageX);
+                $(container).css('margin-left', ml + 'px');
+
+                $(container).fadeIn('200');
+		}
+	}
+
+	transformBingEventsToRxStream(element, action){
 		var fromEventPattern = Rx.Observable.fromEventPattern;
 		let handlerIdMap = {};
 
 		var RxEvents = fromEventPattern(
 		    function add (h) {
-		        handlerIdMap[action] = Microsoft.Maps.Events.addHandler(map, action, h);
+		        handlerIdMap[action] = Microsoft.Maps.Events.addHandler(element, action, h);
 		    },
 		    function remove (h) {
 		        Microsoft.Maps.Events.removeHandler(handlerIdMap[action]);

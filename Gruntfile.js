@@ -5,9 +5,13 @@ module.exports = function (grunt) {
         bower: {
             install: {
                 options: {
-                    targetDir: 'vendor',
+                    //targetDir: './vendor',
                     cleanTargetDir: true,
-                    cleanBowerDir: true                    
+                    //cleanup: true,
+                    install: true,
+                    //layout: 'byType',
+                    copy: false,
+                    verbose: true
                }
             }
         },
@@ -21,11 +25,20 @@ module.exports = function (grunt) {
                     extensions: ['.js'],
                     transform: ["babelify"]
                 }
+            },
+            example: {
+                src: './example/mapExample.js',
+                dest: './dist/mapExample.js',
+                options: {
+                    debug: true,
+                    extensions: ['.js'],
+                    transform: ["babelify"]
+                }
             }
         }
     });
 
     grunt.loadNpmTasks('grunt-bower-task');
     grunt.loadNpmTasks("grunt-browserify");
-    grunt.registerTask('build', ['bower', 'browserify:lib']);
+    grunt.registerTask('build', ['bower:install', 'browserify:lib']);
 };

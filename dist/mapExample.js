@@ -33,25 +33,184 @@ var _packageJson = require('./package.json');
 
 var _packageJson2 = _interopRequireDefault(_packageJson);
 
-require('rx');
+var _rx = require('rx');
+
+var _rx2 = _interopRequireDefault(_rx);
 
 var _rxDom = require('rx-dom');
 
 var _rxDom2 = _interopRequireDefault(_rxDom);
 
+var _extend = require('extend');
+
+var _extend2 = _interopRequireDefault(_extend);
+
 var RxBing = (function () {
 	function RxBing(options) {
 		_classCallCheck(this, RxBing);
 
-		this.BingAPIKey = options.BingAPIKey;
+		var fromEvent = _rx2['default'].Observable.fromEvent;
+		this.options = options;
 		this.MapReferenceId = options.MapReferenceId;
-		_libUtils2['default'].include(_packageJson2['default'].BingMapsLibrary, function () {});
+		//utils.include(pkg.BingMapsLibrary);
+		fromEvent(document.body, 'load').subscribe(this.initialize());
 	}
 
 	_createClass(RxBing, [{
+		key: 'initialize',
+		value: function initialize() {
+			if (this.options.BingTheme) this.UseBingTheme();
+
+			this.render();
+		}
+	}, {
+		key: 'registerMapHandlers',
+		value: function registerMapHandlers(customHandlers) {
+			this.registerRxEventSequence(customHandlers, this.map);
+		}
+	}, {
+		key: 'registerRxEventSequence',
+		value: function registerRxEventSequence(customHandlers, srcObject) {
+			var _this = this;
+
+			Object.keys(customHandlers).forEach(function (eventName) {
+				if (customHandlers.hasOwnProperty(eventName) && typeof customHandlers[eventName] === "function") {
+					var RxSource = _this.transformBingEventsToRxStream(srcObject, eventName);
+					RxSource.subscribe(customHandlers[eventName], function (error) {
+						return console.log('Event Handler occured for ' + eventName + ' Err: ' + error);
+					});
+				}
+			});
+		}
+	}, {
+		key: 'setCurrentPosition',
+		value: function setCurrentPosition() {
+			var _this2 = this;
+
+			var source = _rx2['default'].DOM.geolocation.getCurrentPosition();
+
+			var subscription = source.subscribe(function (myLocay) {
+				return _this2.centerMap(myLocay.coords);
+			}, function (err) {
+				var message = '';
+				switch (err.code) {
+					case err.PERMISSION_DENIED:
+						message = 'Permission denied';
+						break;
+					case err.POSITION_UNAVAILABLE:
+						message = 'Position unavailable';
+						break;
+					case err.PERMISSION_DENIED_TIMEOUT:
+						message = 'Position timeout';
+						break;
+				}
+				console.log('Error: ' + message);
+			}, function () {
+				console.log('Completed');
+			});
+		}
+	}, {
+		key: 'centerMap',
+		value: function centerMap(coordinates) {
+			var mapConfig = this.map.getOptions();
+
+			mapConfig.zoom = 15;
+			mapConfig.center = {
+				'latitude': coordinates.latitude,
+				'longitude': coordinates.longitude
+			};
+			this.map.setView(mapConfig);
+
+			var geoLocationProvider = new Microsoft.Maps.GeoLocationProvider(this.map);
+			geoLocationProvider.getCurrentPosition();
+		}
+	}, {
 		key: 'render',
 		value: function render() {
-			this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), { credentials: this.BingAPIKey });
+			var options = (0, _extend2['default'])(true, {}, this.defaultOptions(), this.options);
+
+			this.map = new Microsoft.Maps.Map(document.getElementById(this.MapReferenceId), options);
+			if (options.CenterMap) this.setCurrentPosition();
+
+			if (options.ShowTraffic) this.showTraffic();
+		}
+	}, {
+		key: 'showTraffic',
+		value: function showTraffic() {
+			var _this3 = this;
+
+			Microsoft.Maps.loadModule('Microsoft.Maps.Traffic', { callback: function callback() {
+					return new Microsoft.Maps.Traffic.TrafficManager(_this3.map).show();
+				} });
+		}
+	}, {
+		key: 'pushPins',
+		value: function pushPins(pinSet, customHandlers) {
+			var _this4 = this;
+
+			var source = _rx2['default'].Observable.from(pinSet).subscribe(function (pinMe) {
+				if (customHandlers) _this4.registerRxEventSequence(customHandlers, pinMe);
+
+				_this4.map.entities.push(pinMe);
+				createTooltip(pinMe);
+			}, function (error) {
+				return console.log('An error occured adding the pin set to the map: ' + error);
+			});
+		}
+	}, {
+		key: 'createTooltip',
+		value: function createTooltip(pin) {
+			if (pin.tooltip) {
+				var domTarget = pin.cm1002_er_etr.dom,
+				    container = '.' + pin.tooltipCssAlias + '_container_bottom',
+				    wt = undefined,
+				    ml = undefined;
+
+				var tooltip = "<div class='{0}'><div class='{1}_content'>{2}</div></div>".format(container, pin.tooltipCssAlias, pin.tooltip);
+
+				$(domTarget).after(tooltip);
+
+				wt = $(container).outerWidth();
+				ml = -(wt / 2 + 20);
+
+				$(container).css('top', e.pageY + 20);
+				$(container).css('left', e.pageX);
+				$(container).css('margin-left', ml + 'px');
+
+				$(container).fadeIn('200');
+			}
+		}
+	}, {
+		key: 'transformBingEventsToRxStream',
+		value: function transformBingEventsToRxStream(element, action) {
+			var fromEventPattern = _rx2['default'].Observable.fromEventPattern;
+			var handlerIdMap = {};
+
+			var RxEvents = fromEventPattern(function add(h) {
+				handlerIdMap[action] = Microsoft.Maps.Events.addHandler(element, action, h);
+			}, function remove(h) {
+				Microsoft.Maps.Events.removeHandler(handlerIdMap[action]);
+			});
+
+			return RxEvents;
+		}
+	}, {
+		key: 'UseBingTheme',
+		value: function UseBingTheme() {
+			var _this5 = this;
+
+			Microsoft.Maps.loadModule('Microsoft.Maps.Themes.BingTheme', { callback: function callback() {
+					return _this5.options = (0, _extend2['default'])(true, {}, _this5.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
+				} });
+		}
+	}, {
+		key: 'defaultOptions',
+		value: function defaultOptions() {
+			return {
+				mapTypeId: Microsoft.Maps.MapTypeId.road,
+				enableHighDpi: true,
+				zoom: 12
+			};
 		}
 	}]);
 
@@ -61,32 +220,129 @@ var RxBing = (function () {
 exports['default'] = RxBing;
 module.exports = exports['default'];
 
-},{"./lib/utils":2,"./package.json":48,"rx":47,"rx-dom":45}],2:[function(require,module,exports){
+},{"./lib/utils":4,"./package.json":53,"extend":46,"rx":52,"rx-dom":51}],2:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+exports.mySurroundings = mySurroundings;
+var BingServices = require('rx-bing-services');
+
+var APIKey = 'Aji7ARlyYm81OWlGyWxr8DCdPFhUtbYyAYq1LcAKgFoYh1Q6Dx5Sqvybk8qVTtir';
+
+function mySurroundings(location, responseCB) {
+  var rsp = BingServices.whatsAroundMe({
+    apiKey: APIKey,
+    location: "{0},{1}".format(location.latitude, location.longitude),
+    top: 10,
+    radius: 1
+  }, {
+    // Request validation error occured
+    error: function error(e) {
+      console.log('Received a validation error:\n', e);
+    }
+  }).subscribe(responseCB, function (error) {
+    console.log("There was an error with the bing service call: " + error);
+  });
+}
+
+var _rxBingServices = require('rx-bing-services');
+
+Object.defineProperty(exports, 'fromRspToSpatialEntities', {
+  enumerable: true,
+  get: function get() {
+    return _rxBingServices.fromRspToSpatialEntities;
+  }
+});
+Object.defineProperty(exports, 'getEntityTypeDetails', {
+  enumerable: true,
+  get: function get() {
+    return _rxBingServices.getEntityTypeDetails;
+  }
+});
+
+},{"rx-bing-services":48}],3:[function(require,module,exports){
+'use strict';
+
+function _interopRequireDefault(obj) {
+     return obj && obj.__esModule ? obj : { 'default': obj };
+}
+
+var _RxBingMap = require('../RxBingMap');
+
+var _RxBingMap2 = _interopRequireDefault(_RxBingMap);
+
+var _rx = require('rx');
+
+var _rx2 = _interopRequireDefault(_rx);
+
+var BingServicesImpl = require('./BingSpatialDataService');
+
+var map = new _RxBingMap2['default']({ MapReferenceId: "mapDiv",
+     credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
+     BingTheme: true,
+     CenterMap: true,
+     ShowTraffic: true });
+
+map.registerMapHandlers({ click: function click(result) {
+          if (result.targetType == "map") {
+               var point = new Microsoft.Maps.Point(result.getX(), result.getY());
+               var loc = result.target.tryPixelToLocation(point);
+               map.pushPins([constructMapPin(loc, 'map-pin', "Selected location for {0},{1}".format(loc.latitude, loc.longitude))]);
+
+               //Call Whats around me to pin your surroundings
+               BingServicesImpl.mySurroundings(loc, function (response) {
+                    _rx2['default'].Observable.from(BingServicesImpl.fromRspToSpatialEntities(response)).subscribe(function (entity) {
+                         var entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
+                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b>{0}</b>: {1}".format(entityInfo.EntityType, entity.DisplayName))]);
+                    }, function (error) {
+                         return console.log('An error occured converting the response into an observable: ' + error);
+                    });
+               });
+               //console.log("Clicked " + loc.latitude + ", " + loc.longitude);
+          }
+     } });
+
+var constructMapPin = function constructMapPin(location, icon, tooltipText) {
+     var coords = {
+          'latitude': location.latitude,
+          'longitude': location.longitude
+     };
+
+     var pinOpts = {
+          htmlContent: '<i style="color: orange; margin:0px 0px 0px 0px;" class="fa fa-' + icon + '"></i>',
+          draggable: true,
+          textOffset: new Microsoft.Maps.Point(0, 0)
+     };
+
+     var pin = new Microsoft.Maps.Pushpin(coords, pinOpts);
+
+     return { pin: pin, tooltip: tooltipText, tooltipCssAlias: 'tooltip' };
+};
+
+//map.centerMap({latitude: 40.735803, longitude: -74.001374});
+
+},{"../RxBingMap":1,"./BingSpatialDataService":2,"rx":52}],4:[function(require,module,exports){
 "use strict";
 
 var vm = require("vm");
 var http = require("http");
 
 module.exports = {
-	include: function include(path, cb) {
-		var head = document.getElementsByTagName('head')[0];
-		var script = document.createElement('script');
-		script.type = 'text/javascript';
-		script.src = path;
+	include: function include(path) {
+		var script = document.createElement("script");
+		script.setAttribute("type", "text/javascript");
+		script.setAttribute("src", path);
+		document.body.appendChild(script);
 
-		// Then bind the event to the callback function.
-		// There are several events for cross browser compatibility.
-		script.onreadystatechange = cb;
-		script.onload = cb;
-
-		// Fire the loading
-		head.appendChild(script);
+		return script;
 	}
 };
 
-},{"http":30,"vm":41}],3:[function(require,module,exports){
+},{"http":32,"vm":43}],5:[function(require,module,exports){
 
-},{}],4:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -1621,7 +1877,7 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
-},{"base64-js":5,"ieee754":6,"is-array":7}],5:[function(require,module,exports){
+},{"base64-js":7,"ieee754":8,"is-array":9}],7:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -1747,7 +2003,7 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	exports.fromByteArray = uint8ToBase64
 }(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
 
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -1833,7 +2089,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 
 /**
  * isArray
@@ -1868,7 +2124,7 @@ module.exports = isArray || function (val) {
   return !! val && '[object Array]' == str.call(val);
 };
 
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2171,7 +2427,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -2196,12 +2452,12 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],11:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2293,7 +2549,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.3.2 by @mathias */
 ;(function(root) {
@@ -2827,7 +3083,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2913,7 +3169,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3000,16 +3256,16 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":13,"./encode":14}],16:[function(require,module,exports){
+},{"./decode":15,"./encode":16}],18:[function(require,module,exports){
 module.exports = require("./lib/_stream_duplex.js")
 
-},{"./lib/_stream_duplex.js":17}],17:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":19}],19:[function(require,module,exports){
 // a duplex stream is just a stream that is both readable and writable.
 // Since JS doesn't have multiple prototypal inheritance, this class
 // prototypally inherits from Readable, and then parasitically from
@@ -3093,7 +3349,7 @@ function forEach (xs, f) {
   }
 }
 
-},{"./_stream_readable":19,"./_stream_writable":21,"core-util-is":22,"inherits":9,"process-nextick-args":23}],18:[function(require,module,exports){
+},{"./_stream_readable":21,"./_stream_writable":23,"core-util-is":24,"inherits":11,"process-nextick-args":25}],20:[function(require,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -3122,7 +3378,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":20,"core-util-is":22,"inherits":9}],19:[function(require,module,exports){
+},{"./_stream_transform":22,"core-util-is":24,"inherits":11}],21:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -4085,7 +4341,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":17,"_process":11,"buffer":4,"core-util-is":22,"events":8,"inherits":9,"isarray":10,"process-nextick-args":23,"string_decoder/":39,"util":3}],20:[function(require,module,exports){
+},{"./_stream_duplex":19,"_process":13,"buffer":6,"core-util-is":24,"events":10,"inherits":11,"isarray":12,"process-nextick-args":25,"string_decoder/":41,"util":5}],22:[function(require,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -4284,7 +4540,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":17,"core-util-is":22,"inherits":9}],21:[function(require,module,exports){
+},{"./_stream_duplex":19,"core-util-is":24,"inherits":11}],23:[function(require,module,exports){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, cb), and it'll handle all
 // the drain event emission and buffering.
@@ -4806,7 +5062,7 @@ function endWritable(stream, state, cb) {
   state.ended = true;
 }
 
-},{"./_stream_duplex":17,"buffer":4,"core-util-is":22,"events":8,"inherits":9,"process-nextick-args":23,"util-deprecate":24}],22:[function(require,module,exports){
+},{"./_stream_duplex":19,"buffer":6,"core-util-is":24,"events":10,"inherits":11,"process-nextick-args":25,"util-deprecate":26}],24:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4916,7 +5172,7 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 }).call(this,require("buffer").Buffer)
-},{"buffer":4}],23:[function(require,module,exports){
+},{"buffer":6}],25:[function(require,module,exports){
 (function (process){
 'use strict';
 module.exports = nextTick;
@@ -4933,7 +5189,7 @@ function nextTick(fn) {
 }
 
 }).call(this,require('_process'))
-},{"_process":11}],24:[function(require,module,exports){
+},{"_process":13}],26:[function(require,module,exports){
 (function (global){
 
 /**
@@ -4999,10 +5255,10 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],25:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 module.exports = require("./lib/_stream_passthrough.js")
 
-},{"./lib/_stream_passthrough.js":18}],26:[function(require,module,exports){
+},{"./lib/_stream_passthrough.js":20}],28:[function(require,module,exports){
 var Stream = (function (){
   try {
     return require('st' + 'ream'); // hack to fix a circular dependency issue when used with browserify
@@ -5016,13 +5272,13 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":17,"./lib/_stream_passthrough.js":18,"./lib/_stream_readable.js":19,"./lib/_stream_transform.js":20,"./lib/_stream_writable.js":21}],27:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":19,"./lib/_stream_passthrough.js":20,"./lib/_stream_readable.js":21,"./lib/_stream_transform.js":22,"./lib/_stream_writable.js":23}],29:[function(require,module,exports){
 module.exports = require("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":20}],28:[function(require,module,exports){
+},{"./lib/_stream_transform.js":22}],30:[function(require,module,exports){
 module.exports = require("./lib/_stream_writable.js")
 
-},{"./lib/_stream_writable.js":21}],29:[function(require,module,exports){
+},{"./lib/_stream_writable.js":23}],31:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5151,7 +5407,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":8,"inherits":9,"readable-stream/duplex.js":16,"readable-stream/passthrough.js":25,"readable-stream/readable.js":26,"readable-stream/transform.js":27,"readable-stream/writable.js":28}],30:[function(require,module,exports){
+},{"events":10,"inherits":11,"readable-stream/duplex.js":18,"readable-stream/passthrough.js":27,"readable-stream/readable.js":28,"readable-stream/transform.js":29,"readable-stream/writable.js":30}],32:[function(require,module,exports){
 var ClientRequest = require('./lib/request')
 var extend = require('xtend')
 var statusCodes = require('builtin-status-codes')
@@ -5226,7 +5482,7 @@ http.METHODS = [
 	'UNLOCK',
 	'UNSUBSCRIBE'
 ]
-},{"./lib/request":32,"builtin-status-codes":34,"url":40,"xtend":43}],31:[function(require,module,exports){
+},{"./lib/request":34,"builtin-status-codes":36,"url":42,"xtend":45}],33:[function(require,module,exports){
 exports.fetch = isFunction(window.fetch) && isFunction(window.ReadableByteStream)
 
 exports.blobConstructor = false
@@ -5266,7 +5522,7 @@ function isFunction (value) {
 
 xhr = null // Help gc
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (process,Buffer){
 // var Base64 = require('Base64')
 var capability = require('./capability')
@@ -5549,7 +5805,7 @@ var unsafeHeaders = [
 ]
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./capability":31,"./response":33,"_process":11,"buffer":4,"foreach":35,"indexof":36,"inherits":9,"object-keys":37,"stream":29}],33:[function(require,module,exports){
+},{"./capability":33,"./response":35,"_process":13,"buffer":6,"foreach":37,"indexof":38,"inherits":11,"object-keys":39,"stream":31}],35:[function(require,module,exports){
 (function (process,Buffer){
 var capability = require('./capability')
 var foreach = require('foreach')
@@ -5726,7 +5982,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 }
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./capability":31,"_process":11,"buffer":4,"foreach":35,"inherits":9,"stream":29}],34:[function(require,module,exports){
+},{"./capability":33,"_process":13,"buffer":6,"foreach":37,"inherits":11,"stream":31}],36:[function(require,module,exports){
 module.exports = {
   "100": "Continue",
   "101": "Switching Protocols",
@@ -5787,7 +6043,7 @@ module.exports = {
   "511": "Network Authentication Required"
 }
 
-},{}],35:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 
 var hasOwn = Object.prototype.hasOwnProperty;
 var toString = Object.prototype.toString;
@@ -5811,7 +6067,7 @@ module.exports = function forEach (obj, fn, ctx) {
 };
 
 
-},{}],36:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 
 var indexOf = [].indexOf;
 
@@ -5822,7 +6078,7 @@ module.exports = function(arr, obj){
   }
   return -1;
 };
-},{}],37:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 // modified from https://github.com/es-shims/es5-shim
@@ -5909,7 +6165,7 @@ keysShim.shim = function shimObjectKeys() {
 
 module.exports = keysShim;
 
-},{"./isArguments":38}],38:[function(require,module,exports){
+},{"./isArguments":40}],40:[function(require,module,exports){
 'use strict';
 
 var toStr = Object.prototype.toString;
@@ -5928,7 +6184,7 @@ module.exports = function isArguments(value) {
 	return isArgs;
 };
 
-},{}],39:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6151,7 +6407,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":4}],40:[function(require,module,exports){
+},{"buffer":6}],42:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6860,7 +7116,7 @@ function isNullOrUndefined(arg) {
   return  arg == null;
 }
 
-},{"punycode":12,"querystring":15}],41:[function(require,module,exports){
+},{"punycode":14,"querystring":17}],43:[function(require,module,exports){
 var indexOf = require('indexof');
 
 var Object_keys = function (obj) {
@@ -7000,9 +7256,9 @@ exports.createContext = Script.createContext = function (context) {
     return copy;
 };
 
-},{"indexof":42}],42:[function(require,module,exports){
-arguments[4][36][0].apply(exports,arguments)
-},{"dup":36}],43:[function(require,module,exports){
+},{"indexof":44}],44:[function(require,module,exports){
+arguments[4][38][0].apply(exports,arguments)
+},{"dup":38}],45:[function(require,module,exports){
 module.exports = extend
 
 function extend() {
@@ -7021,7 +7277,341 @@ function extend() {
     return target
 }
 
-},{}],44:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
+'use strict';
+
+var hasOwn = Object.prototype.hasOwnProperty;
+var toStr = Object.prototype.toString;
+
+var isArray = function isArray(arr) {
+	if (typeof Array.isArray === 'function') {
+		return Array.isArray(arr);
+	}
+
+	return toStr.call(arr) === '[object Array]';
+};
+
+var isPlainObject = function isPlainObject(obj) {
+	if (!obj || toStr.call(obj) !== '[object Object]') {
+		return false;
+	}
+
+	var hasOwnConstructor = hasOwn.call(obj, 'constructor');
+	var hasIsPrototypeOf = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
+	// Not own constructor property must be Object
+	if (obj.constructor && !hasOwnConstructor && !hasIsPrototypeOf) {
+		return false;
+	}
+
+	// Own properties are enumerated firstly, so to speed up,
+	// if last one is own, then all properties are own.
+	var key;
+	for (key in obj) {/**/}
+
+	return typeof key === 'undefined' || hasOwn.call(obj, key);
+};
+
+module.exports = function extend() {
+	var options, name, src, copy, copyIsArray, clone,
+		target = arguments[0],
+		i = 1,
+		length = arguments.length,
+		deep = false;
+
+	// Handle a deep copy situation
+	if (typeof target === 'boolean') {
+		deep = target;
+		target = arguments[1] || {};
+		// skip the boolean and the target
+		i = 2;
+	} else if ((typeof target !== 'object' && typeof target !== 'function') || target == null) {
+		target = {};
+	}
+
+	for (; i < length; ++i) {
+		options = arguments[i];
+		// Only deal with non-null/undefined values
+		if (options != null) {
+			// Extend the base object
+			for (name in options) {
+				src = target[name];
+				copy = options[name];
+
+				// Prevent never-ending loop
+				if (target !== copy) {
+					// Recurse if we're merging plain objects or arrays
+					if (deep && copy && (isPlainObject(copy) || (copyIsArray = isArray(copy)))) {
+						if (copyIsArray) {
+							copyIsArray = false;
+							clone = src && isArray(src) ? src : [];
+						} else {
+							clone = src && isPlainObject(src) ? src : {};
+						}
+
+						// Never move original objects, clone them
+						target[name] = extend(deep, clone, copy);
+
+					// Don't bring in undefined values
+					} else if (typeof copy !== 'undefined') {
+						target[name] = copy;
+					}
+				}
+			}
+		}
+	}
+
+	// Return the modified object
+	return target;
+};
+
+
+},{}],47:[function(require,module,exports){
+module.exports={
+  "2084": { "EntityType": "Winery", "icon": "glass" },
+  "3578": { "EntityType": "ATM", "icon": "money" },
+  "4013": { "EntityType": "Train Station", "icon": "train" },
+  "4100": { "EntityType": "Commuter Rail Station", "icon": "train" },
+  "4170": { "EntityType": "Bus Station", "icon": "bus" },
+  "4444": { "EntityType": "Named Place", "icon": "" },
+  "4482": { "EntityType": "Ferry Terminal", "icon": "ship" },
+  "4493": { "EntityType": "Marina", "icon": "ship" },
+  "4580": { "EntityType": "Public Sports Airport", "icon": "" },
+  "4581": { "EntityType": "Airport", "icon": "" },
+  "5000": { "EntityType": "Business Facility", "icon": "" },
+  "5400": { "EntityType": "Grocery Store", "icon": "cart-plus" },
+  "5511": { "EntityType": "Auto Dealerships", "icon": "car" },
+  "5512": { "EntityType": "Auto Dealership-Used Cars", "icon": "car" },
+  "5540": { "EntityType": "Petrol/Gasoline Station", "icon": "car" },
+  "5571": { "EntityType": "Motorcycle Dealership", "icon": "motorcycle" },
+  "5800": { "EntityType": "Restaurant", "icon": "cutlery" },
+  "5813": { "EntityType": "Nightlife", "icon": "beer" },
+  "5999": { "EntityType": "Historical Monument", "icon": "" },
+  "6000": { "EntityType": "Bank", "icon": "" },
+  "6512": { "EntityType": "Shopping", "icon": "" },
+  "7011": { "EntityType": "Hotel", "icon": "hotel" },
+  "7012": { "EntityType": "Ski Resort", "icon": "" },
+  "7013": { "EntityType": "Other Accommodation", "icon": "" },
+  "7014": { "EntityType": "Ski Lift", "icon": "" },
+  "7389": { "EntityType": "Tourist Information", "icon": "" },
+  "7510": { "EntityType": "Rental Car Agency", "icon": "" },
+  "7520": { "EntityType": "Parking Lot", "icon": "" },
+  "7521": { "EntityType": "Parking Garage/House", "icon": "" },
+  "7522": { "EntityType": "Park & Ride", "icon": "" },
+  "7538": { "EntityType": "Auto Service & Maintenance", "icon": "" },
+  "7832": { "EntityType": "Cinema", "icon": "" },
+  "7897": { "EntityType": "Rest Area", "icon": "" },
+  "7929": { "EntityType": "Performing Arts", "icon": "" },
+  "7933": { "EntityType": "Bowling Centre", "icon": "" },
+  "7940": { "EntityType": "Sports Complex", "icon": "soccer-ball-o" },
+  "7947": { "EntityType": "Park/Recreation Area", "icon": "" },
+  "7985": { "EntityType": "Casino", "icon": "" },
+  "7990": { "EntityType": "Convention/Exhibition Centre", "icon": "" },
+  "7992": { "EntityType": "Golf Course", "icon": "" },
+  "7994": { "EntityType": "Civic/Community Centre", "icon": "" },
+  "7996": { "EntityType": "Amusement Park", "icon": "" },
+  "7997": { "EntityType": "Sports Centre", "icon": "" },
+  "7998": { "EntityType": "Ice Skating Rink", "icon": "" },
+  "7999": { "EntityType": "Tourist Attraction", "icon": "" },
+  "8060": { "EntityType": "Hospital", "icon": "" },
+  "8200": { "EntityType": "Higher Education", "icon": "" },
+  "8211": { "EntityType": "School", "icon": "" },
+  "8231": { "EntityType": "Library", "icon": "" },
+  "8410": { "EntityType": "Museum", "icon": "" },
+  "8699": { "EntityType": "Automobile Club", "icon": "" },
+  "9121": { "EntityType": "City Hall", "icon": "" },
+  "9211": { "EntityType": "Court House", "icon": "" },
+  "9221": { "EntityType": "Police Station", "icon": "" },
+  "9517": { "EntityType": "Campground", "icon": "" },
+  "9522": { "EntityType": "Truck Stop/Plaza", "icon": "" },
+  "9525": { "EntityType": "Government Office", "icon": "" },
+  "9530": { "EntityType": "Post Office", "icon": "" },
+  "9535": { "EntityType": "Convenience Store", "icon": "" },
+  "9537": { "EntityType": "Clothing Store", "icon": "black-tie" },
+  "9545": { "EntityType": "Department Store", "icon": "" },
+  "9560": { "EntityType": "Home Specialty Store", "icon": "" },
+  "9565": { "EntityType": "Pharmacy", "icon": "" },
+  "9567": { "EntityType": "Specialty Store", "icon": "" },
+  "9568": { "EntityType": "Sporting Goods Store", "icon": "" },
+  "9583": { "EntityType": "Medical Service", "icon": "" },
+  "9590": { "EntityType": "Residential Area/Building", "icon": "" },
+  "9591": { "EntityType": "Cemetery", "icon": "" },
+  "9592": { "EntityType": "Highway Exit", "icon": "" },
+  "9593": { "EntityType": "Transportation Service", "icon": "" },
+  "9710": { "EntityType": "Weigh Station", "icon": "" },
+  "9714": { "EntityType": "Cargo Centre", "icon": "" },
+  "9715": { "EntityType": "Military Base", "icon": "" },
+  "9718": { "EntityType": "Animal Park", "icon": "" },
+  "9719": { "EntityType": "Truck Dealership", "icon": "" },
+  "9986": { "EntityType": "Home Improvement & Hardware Store", "icon": "" },
+  "9987": { "EntityType": "Consumer Electronics Store", "icon": "" },
+  "9988": { "EntityType": "Office Supply & Services Store", "icon": "edit" },
+  "9991": { "EntityType": "Industrial Zone", "icon": "" },
+  "9992": { "EntityType": "Place of Worship", "icon": "" },
+  "9993": { "EntityType": "Embassy", "icon": "" },
+  "9994": { "EntityType": "County Council", "icon": "" },
+  "9995": { "EntityType": "Bookstore", "icon": "" },
+  "9996": { "EntityType": "Coffee Shop", "icon": "coffee" },
+  "9998": { "EntityType": "Hamlet", "icon": "" },
+  "9999": { "EntityType": "Border Crossing"} 
+}
+},{}],48:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+		value: true
+});
+exports.validateInput = validateInput;
+
+function _interopExportWildcard(obj, defaults) { var newObj = defaults({}, obj); delete newObj['default']; return newObj; }
+
+function _defaults(obj, defaults) { var keys = Object.getOwnPropertyNames(defaults); for (var i = 0; i < keys.length; i++) { var key = keys[i]; var value = Object.getOwnPropertyDescriptor(defaults, key); if (value && value.configurable && obj[key] === undefined) { Object.defineProperty(obj, key, value); } } return obj; }
+
+var _whatsAroundMe = require('./whats-around-me');
+
+_defaults(exports, _interopExportWildcard(_whatsAroundMe, _defaults));
+
+function validateInput(supportedInputs, requestedInputs) {
+		var errorSet = new Set();
+
+		Object.keys(supportedInputs).forEach(function (item) {
+				if (supportedInputs.hasOwnProperty(item)) {
+						var input = supportedInputs[item];
+						if (input.required && !requestedInputs.hasOwnProperty(item)) errorSet.add({ field: input, errorMsg: 'Required Field is missing' });
+				}
+		});
+
+		return errorSet;
+}
+
+String.prototype.format = function () {
+		var content = this;
+		for (var i = 0; i < arguments.length; i++) {
+				var replacement = '{' + i + '}';
+				content = content.replace(replacement, arguments[i]);
+		}
+		return content;
+};
+
+},{"./whats-around-me":49}],49:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+exports.whatsAroundMe = whatsAroundMe;
+exports.getEntityTypeDetails = getEntityTypeDetails;
+exports.fromRspToSpatialEntities = fromRspToSpatialEntities;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _rx = require('rx');
+
+var _rx2 = _interopRequireDefault(_rx);
+
+var _rxDom = require('rx-dom');
+
+var _rxDom2 = _interopRequireDefault(_rxDom);
+
+var _extend = require('extend');
+
+var _extend2 = _interopRequireDefault(_extend);
+
+var _index = require('./index');
+
+var _dataEntityTypesJson = require('./data/entityTypes.json');
+
+var _dataEntityTypesJson2 = _interopRequireDefault(_dataEntityTypesJson);
+
+var serviceUrl = 'https://spatial.virtualearth.net/REST/v1/data/f22876ec257b474b82fe2ffcb8393150';
+var bingDSDefault = 'NAVTEQNA';
+var bingPOIDefault = 'NavteqPOIs';
+
+var supportedInputs = {
+    apiKey: {
+        example: '232edfdnfddf4450',
+        description: 'Your api access key to access bing spatial data services. This can be obtained at https://msdn.microsoft.com/en-us/library/ff428642.aspx',
+        required: true
+    },
+    location: {
+        example: '34.23245532,-40.47464. {latitude},{longitude}',
+        description: 'The users latitude and longitude',
+        required: true
+    },
+    select: {
+        example: 'Latitude,Longitude,IsWiFiHotSpot,DisplayName',
+        description: 'The selection fields from the bing spatial data source',
+        required: false
+    },
+    datasourceName: {
+        example: 'NAVTEQNA',
+        description: 'The Bing spatial data public data source name to query',
+        required: false
+    },
+    poiName: {
+        example: 'NavteqPOIs',
+        description: 'The point of interest name',
+        required: false
+    },
+    filter: {
+        example: 'StartsWith(PrimaryCity, Clear) eq true',
+        description: 'The Odata filter for the bing spatial data query',
+        required: false
+    },
+    orberByClause: {
+        example: 'IsWheelchairAccessible',
+        description: 'The Odata filter for the bing spatial data query',
+        required: false
+    },
+    top: {
+        example: '3',
+        description: 'Sets the max returned alllwable results',
+        required: false
+    },
+    radius: {
+        example: '1',
+        description: 'Spatial data filter radius(in kilometers)',
+        required: true
+    }
+};
+
+var validateRequest = function validateRequest(input) {
+    return input.location.split(',').length == 2;
+};
+
+function whatsAroundMe(input, exits) {
+    var errors = (0, _index.validateInput)(input);
+    if (errors.size > 0) return exits.error({ description: 'input validation failed', errorSet: errors });
+
+    if (!validateRequest(input)) return exits.error({ description: 'request failed validation check' });
+
+    var coords = input.location.split(',');
+
+    var spatialFilter = "spatialFilter=nearby({0},{1},{2})".format(coords[0], coords[1], input.radius);
+    var select = "$select={0}".format(input.select || '*');
+    var filter = input.filter ? "&$filter={0}".format(input.filter) : '';
+    var order = input.order ? "&$orderby={0}".format(input.order) : '';
+    var top = "$top={0}".format(input.top || 5);
+
+    var BingURL = "{0}/{1}/{2}?key={3}&{4}&{5}&{6}{7}{8}&$format=json&jsonp=JSONPCallback".format(serviceUrl, input.datasourceName || bingDSDefault, input.poiName || bingPOIDefault, input.apiKey, spatialFilter, select, top, filter, order);
+
+    return _rx2['default'].DOM.jsonpRequest({ url: BingURL, jsonp: 'JSONPCallback' });
+}
+
+;
+
+function getEntityTypeDetails(entityTypeId) {
+    var entityDetails = _dataEntityTypesJson2['default'][entityTypeId] || {};
+
+    return entityDetails;
+}
+
+;
+
+function fromRspToSpatialEntities(bingRsp) {
+    return bingRsp && bingRsp.response && bingRsp.response.d && bingRsp.response.d.results ? bingRsp.response.d.results : [];
+}
+
+},{"./data/entityTypes.json":47,"./index":48,"extend":46,"rx":52,"rx-dom":51}],50:[function(require,module,exports){
 (function (global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -8039,11 +8629,11 @@ function normalizeAjaxLoadEvent(e, xhr, settings) {
   return Rx;
 }));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"rx":46}],45:[function(require,module,exports){
+},{"rx":52}],51:[function(require,module,exports){
 var Rx = require('rx');
 require('./dist/rx.dom');
 module.exports = Rx;
-},{"./dist/rx.dom":44,"rx":46}],46:[function(require,module,exports){
+},{"./dist/rx.dom":50,"rx":52}],52:[function(require,module,exports){
 (function (process,global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -8100,19 +8690,19 @@ module.exports = Rx;
   function cloneArray(arr) { for(var a = [], i = 0, len = arr.length; i < len; i++) { a.push(arr[i]); } return a;}
 
   var errorObj = {e: {}};
-  var tryCatchTarget;
-  function tryCatcher() {
-    try {
-      return tryCatchTarget.apply(this, arguments);
-    } catch (e) {
-      errorObj.e = e;
-      return errorObj;
+  function tryCatcherGen(tryCatchTarget) {
+    return function tryCatcher() {
+      try {
+        return tryCatchTarget.apply(this, arguments);
+      } catch (e) {
+        errorObj.e = e;
+        return errorObj;
+      }
     }
   }
-  function tryCatch(fn) {
+  var tryCatch = Rx.internals.tryCatch = function tryCatch(fn) {
     if (!isFunction(fn)) { throw new TypeError('fn must be a function'); }
-    tryCatchTarget = fn;
-    return tryCatcher;
+    return tryCatcherGen(fn);
   }
   function thrower(e) {
     throw e;
@@ -8214,35 +8804,35 @@ module.exports = Rx;
     this.name = 'EmptyError';
     Error.call(this);
   };
-  EmptyError.prototype = Error.prototype;
+  EmptyError.prototype = Object.create(Error.prototype);
 
   var ObjectDisposedError = Rx.ObjectDisposedError = function() {
     this.message = 'Object has been disposed';
     this.name = 'ObjectDisposedError';
     Error.call(this);
   };
-  ObjectDisposedError.prototype = Error.prototype;
+  ObjectDisposedError.prototype = Object.create(Error.prototype);
 
   var ArgumentOutOfRangeError = Rx.ArgumentOutOfRangeError = function () {
     this.message = 'Argument out of range';
     this.name = 'ArgumentOutOfRangeError';
     Error.call(this);
   };
-  ArgumentOutOfRangeError.prototype = Error.prototype;
+  ArgumentOutOfRangeError.prototype = Object.create(Error.prototype);
 
   var NotSupportedError = Rx.NotSupportedError = function (message) {
     this.message = message || 'This operation is not supported';
     this.name = 'NotSupportedError';
     Error.call(this);
   };
-  NotSupportedError.prototype = Error.prototype;
+  NotSupportedError.prototype = Object.create(Error.prototype);
 
   var NotImplementedError = Rx.NotImplementedError = function (message) {
     this.message = message || 'This operation is not implemented';
     this.name = 'NotImplementedError';
     Error.call(this);
   };
-  NotImplementedError.prototype = Error.prototype;
+  NotImplementedError.prototype = Object.create(Error.prototype);
 
   var notImplemented = Rx.helpers.notImplemented = function () {
     throw new NotImplementedError();
@@ -16707,8 +17297,8 @@ observableProto.controlled = function (enableQueue, scheduler) {
       observableTimerTimeSpanAndPeriod(dueTime, period, scheduler);
   };
 
-  function observableDelayTimeSpan(source, dueTime, scheduler) {
-    return new AnonymousObservable(function (observer) {
+  function observableDelayRelative(source, dueTime, scheduler) {
+    return new AnonymousObservable(function (o) {
       var active = false,
         cancelable = new SerialDisposable(),
         exception = null,
@@ -16729,7 +17319,7 @@ observableProto.controlled = function (enableQueue, scheduler) {
         }
         if (shouldRun) {
           if (exception !== null) {
-            observer.onError(exception);
+            o.onError(exception);
           } else {
             d = new SingleAssignmentDisposable();
             cancelable.setDisposable(d);
@@ -16745,7 +17335,7 @@ observableProto.controlled = function (enableQueue, scheduler) {
                   result = q.shift().value;
                 }
                 if (result !== null) {
-                  result.accept(observer);
+                  result.accept(o);
                 }
               } while (result !== null);
               shouldRecurse = false;
@@ -16759,7 +17349,7 @@ observableProto.controlled = function (enableQueue, scheduler) {
               e = exception;
               running = false;
               if (e !== null) {
-                observer.onError(e);
+                o.onError(e);
               } else if (shouldRecurse) {
                 self(recurseDueTime);
               }
@@ -16771,42 +17361,91 @@ observableProto.controlled = function (enableQueue, scheduler) {
     }, source);
   }
 
-  function observableDelayDate(source, dueTime, scheduler) {
+  function observableDelayAbsolute(source, dueTime, scheduler) {
     return observableDefer(function () {
-      return observableDelayTimeSpan(source, dueTime - scheduler.now(), scheduler);
+      return observableDelayRelative(source, dueTime - scheduler.now(), scheduler);
     });
   }
 
+  function delayWithSelector(source, subscriptionDelay, delayDurationSelector) {
+    var subDelay, selector;
+    if (isFunction(subscriptionDelay)) {
+      selector = subscriptionDelay;
+    } else {
+      subDelay = subscriptionDelay;
+      selector = delayDurationSelector;
+    }
+    return new AnonymousObservable(function (o) {
+      var delays = new CompositeDisposable(), atEnd = false, subscription = new SerialDisposable();
+
+      function start() {
+        subscription.setDisposable(source.subscribe(
+          function (x) {
+            var delay = tryCatch(selector)(x);
+            if (delay === errorObj) { return o.onError(delay.e); }
+            var d = new SingleAssignmentDisposable();
+            delays.add(d);
+            d.setDisposable(delay.subscribe(
+              function () {
+                o.onNext(x);
+                delays.remove(d);
+                done();
+              },
+              function (e) { o.onError(e); },
+              function () {
+                o.onNext(x);
+                delays.remove(d);
+                done();
+              }
+            ));
+          },
+          function (e) { o.onError(e); },
+          function () {
+            atEnd = true;
+            subscription.dispose();
+            done();
+          }
+        ));
+      }
+
+      function done () {
+        atEnd && delays.length === 0 && o.onCompleted();
+      }
+
+      if (!subDelay) {
+        start();
+      } else {
+        subscription.setDisposable(subDelay.subscribe(start, function (e) { o.onError(e); }, start));
+      }
+
+      return new CompositeDisposable(subscription, delays);
+    }, this);
+  }
+
   /**
-   *  Time shifts the observable sequence by dueTime. The relative time intervals between the values are preserved.
+   *  Time shifts the observable sequence by dueTime.
+   *  The relative time intervals between the values are preserved.
    *
-   * @example
-   *  1 - res = Rx.Observable.delay(new Date());
-   *  2 - res = Rx.Observable.delay(new Date(), Rx.Scheduler.timeout);
-   *
-   *  3 - res = Rx.Observable.delay(5000);
-   *  4 - res = Rx.Observable.delay(5000, 1000, Rx.Scheduler.timeout);
-   * @memberOf Observable#
    * @param {Number} dueTime Absolute (specified as a Date object) or relative time (specified as an integer denoting milliseconds) by which to shift the observable sequence.
    * @param {Scheduler} [scheduler] Scheduler to run the delay timers on. If not specified, the timeout scheduler is used.
    * @returns {Observable} Time-shifted sequence.
    */
-  observableProto.delay = function (dueTime, scheduler) {
-    isScheduler(scheduler) || (scheduler = timeoutScheduler);
-    return dueTime instanceof Date ?
-      observableDelayDate(this, dueTime.getTime(), scheduler) :
-      observableDelayTimeSpan(this, dueTime, scheduler);
+  observableProto.delay = function () {
+    if (typeof arguments[0] === 'number' || arguments[0] instanceof Date) {
+      var dueTime = arguments[0], scheduler = arguments[1];
+      isScheduler(scheduler) || (scheduler = timeoutScheduler);
+      return dueTime instanceof Date ?
+        observableDelayAbsolute(this, dueTime, scheduler) :
+        observableDelayRelative(this, dueTime, scheduler);
+    } else if (isFunction(arguments[0])) {
+      return delayWithSelector(this, arguments[0], arguments[1]);
+    } else {
+      throw new Error('Invalid arguments');
+    }
   };
 
-  /**
-   *  Ignores values from an observable sequence which are followed by another value before dueTime.
-   * @param {Number} dueTime Duration of the debounce period for each value (specified as an integer denoting milliseconds).
-   * @param {Scheduler} [scheduler]  Scheduler to run the debounce timers on. If not specified, the timeout scheduler is used.
-   * @returns {Observable} The debounced sequence.
-   */
-  observableProto.debounce = function (dueTime, scheduler) {
+  function debounce(source, dueTime, scheduler) {
     isScheduler(scheduler) || (scheduler = timeoutScheduler);
-    var source = this;
     return new AnonymousObservable(function (observer) {
       var cancelable = new SerialDisposable(), hasvalue = false, value, id = 0;
       var subscription = source.subscribe(
@@ -16837,14 +17476,63 @@ observableProto.controlled = function (enableQueue, scheduler) {
         });
       return new CompositeDisposable(subscription, cancelable);
     }, this);
-  };
+  }
 
-  /**
-   * @deprecated use #debounce or #throttleWithTimeout instead.
-   */
-  observableProto.throttle = function(dueTime, scheduler) {
-    //deprecate('throttle', 'debounce or throttleWithTimeout');
-    return this.debounce(dueTime, scheduler);
+  function debounceWithSelector(source, durationSelector) {
+    return new AnonymousObservable(function (o) {
+      var value, hasValue = false, cancelable = new SerialDisposable(), id = 0;
+      var subscription = source.subscribe(
+        function (x) {
+          var throttle = tryCatch(durationSelector)(x);
+          if (throttle === errorObj) { return o.onError(throttle.e); }
+
+          isPromise(throttle) && (throttle = observableFromPromise(throttle));
+
+          hasValue = true;
+          value = x;
+          id++;
+          var currentid = id, d = new SingleAssignmentDisposable();
+          cancelable.setDisposable(d);
+          d.setDisposable(throttle.subscribe(
+            function () {
+              hasValue && id === currentid && o.onNext(value);
+              hasValue = false;
+              d.dispose();
+            },
+            function (e) { o.onError(e); },
+            function () {
+              hasValue && id === currentid && o.onNext(value);
+              hasValue = false;
+              d.dispose();
+            }
+          ));
+        },
+        function (e) {
+          cancelable.dispose();
+          o.onError(e);
+          hasValue = false;
+          id++;
+        },
+        function () {
+          cancelable.dispose();
+          hasValue && o.onNext(value);
+          o.onCompleted();
+          hasValue = false;
+          id++;
+        }
+      );
+      return new CompositeDisposable(subscription, cancelable);
+    }, source);
+  }
+
+  observableProto.debounce = function () {
+    if (isFunction (arguments[0])) {
+      return debounceWithSelector(this, arguments[0]);
+    } else if (typeof arguments[0] === 'number') {
+      return debounce(this, arguments[0], arguments[1]);
+    } else {
+      throw new Error('Invalid arguments');
+    }
   };
 
   /**
@@ -17105,22 +17793,78 @@ observableProto.controlled = function (enableQueue, scheduler) {
       sampleObservable(this, intervalOrSampler);
   };
 
-  /**
-   *  Returns the source observable sequence or the other observable sequence if dueTime elapses.
-   * @param {Number} dueTime Absolute (specified as a Date object) or relative time (specified as an integer denoting milliseconds) when a timeout occurs.
-   * @param {Observable} [other]  Sequence to return in case of a timeout. If not specified, a timeout error throwing sequence will be used.
-   * @param {Scheduler} [scheduler]  Scheduler to run the timeout timers on. If not specified, the timeout scheduler is used.
-   * @returns {Observable} The source sequence switching to the other sequence in case of a timeout.
-   */
-  observableProto.timeout = function (dueTime, other, scheduler) {
-    (other == null || typeof other === 'string') && (other = observableThrow(new Error(other || 'Timeout')));
+  var TimeoutError = Rx.TimeoutError = function(message) {
+    this.message = message || 'Timeout has occurred';
+    this.name = 'TimeoutError';
+    Error.call(this);
+  };
+  TimeoutError.prototype = Object.create(Error.prototype);
+
+  function timeoutWithSelector(source, firstTimeout, timeoutDurationSelector, other) {
+    if (isFunction(firstTimeout)) {
+      other = timeoutDurationSelector;
+      timeoutDurationSelector = firstTimeout;
+      firstTimeout = observableNever();
+    }
+    other || (other = observableThrow(new TimeoutError()));
+    return new AnonymousObservable(function (o) {
+      var subscription = new SerialDisposable(), timer = new SerialDisposable(), original = new SingleAssignmentDisposable();
+
+      subscription.setDisposable(original);
+
+      var id = 0, switched = false;
+
+      function setTimer(timeout) {
+        var myId = id, d = new SingleAssignmentDisposable();
+        timer.setDisposable(d);
+        d.setDisposable(timeout.subscribe(function () {
+          id === myId && subscription.setDisposable(other.subscribe(o));
+          d.dispose();
+        }, function (e) {
+          id === myId && o.onError(e);
+        }, function () {
+          id === myId && subscription.setDisposable(other.subscribe(o));
+        }));
+      };
+
+      setTimer(firstTimeout);
+
+      function oWins() {
+        var res = !switched;
+        if (res) { id++; }
+        return res;
+      }
+
+      original.setDisposable(source.subscribe(function (x) {
+        if (oWins()) {
+          o.onNext(x);
+          var timeout = tryCatch(timeoutDurationSelector)(x);
+          if (timeout === errorObj) { return o.onError(timeout.e); }
+          setTimer(isPromise(timeout) ? observableFromPromise(timeout) : timeout);
+        }
+      }, function (e) {
+        oWins() && o.onError(e);
+      }, function () {
+        oWins() && o.onCompleted();
+      }));
+      return new CompositeDisposable(subscription, timer);
+    }, source);
+  }
+
+  function timeout(source, dueTime, other, scheduler) {
+    if (other == null) { throw new Error('other or scheduler must be specified'); }
+    if (isScheduler(other)) {
+      scheduler = other;
+      other = observableThrow(new TimeoutError());
+    }
+    if (other instanceof Error) { other = observableThrow(other); }
     isScheduler(scheduler) || (scheduler = timeoutScheduler);
 
-    var source = this, schedulerMethod = dueTime instanceof Date ?
+    var schedulerMethod = dueTime instanceof Date ?
       'scheduleWithAbsolute' :
       'scheduleWithRelative';
 
-    return new AnonymousObservable(function (observer) {
+    return new AnonymousObservable(function (o) {
       var id = 0,
         original = new SingleAssignmentDisposable(),
         subscription = new SerialDisposable(),
@@ -17134,7 +17878,7 @@ observableProto.controlled = function (enableQueue, scheduler) {
         timer.setDisposable(scheduler[schedulerMethod](dueTime, function () {
           if (id === myId) {
             isPromise(other) && (other = observableFromPromise(other));
-            subscription.setDisposable(other.subscribe(observer));
+            subscription.setDisposable(other.subscribe(o));
           }
         }));
       }
@@ -17144,22 +17888,33 @@ observableProto.controlled = function (enableQueue, scheduler) {
       original.setDisposable(source.subscribe(function (x) {
         if (!switched) {
           id++;
-          observer.onNext(x);
+          o.onNext(x);
           createTimer();
         }
       }, function (e) {
         if (!switched) {
           id++;
-          observer.onError(e);
+          o.onError(e);
         }
       }, function () {
         if (!switched) {
           id++;
-          observer.onCompleted();
+          o.onCompleted();
         }
       }));
       return new CompositeDisposable(subscription, timer);
     }, source);
+  }
+
+  observableProto.timeout = function () {
+    var firstArg = arguments[0];
+    if (firstArg instanceof Date || typeof firstArg === 'number') {
+      return timeout(this, firstArg, arguments[1], arguments[2]);
+    } else if (Observable.isObservable(firstArg) || isFunction(firstArg)) {
+      return timeoutWithSelector(this, firstArg, arguments[1], arguments[2]);
+    } else {
+      throw new Error('Invalid arguments');
+    }
   };
 
   /**
@@ -17288,194 +18043,6 @@ observableProto.controlled = function (enableQueue, scheduler) {
 
       return d;
     }, this);
-  };
-
-  /**
-   *  Time shifts the observable sequence based on a subscription delay and a delay selector function for each element.
-   *
-   * @example
-   *  1 - res = source.delayWithSelector(function (x) { return Rx.Scheduler.timer(5000); }); // with selector only
-   *  1 - res = source.delayWithSelector(Rx.Observable.timer(2000), function (x) { return Rx.Observable.timer(x); }); // with delay and selector
-   *
-   * @param {Observable} [subscriptionDelay]  Sequence indicating the delay for the subscription to the source.
-   * @param {Function} delayDurationSelector Selector function to retrieve a sequence indicating the delay for each given element.
-   * @returns {Observable} Time-shifted sequence.
-   */
-  observableProto.delayWithSelector = function (subscriptionDelay, delayDurationSelector) {
-    var source = this, subDelay, selector;
-    if (isFunction(subscriptionDelay)) {
-      selector = subscriptionDelay;
-    } else {
-      subDelay = subscriptionDelay;
-      selector = delayDurationSelector;
-    }
-    return new AnonymousObservable(function (observer) {
-      var delays = new CompositeDisposable(), atEnd = false, subscription = new SerialDisposable();
-
-      function start() {
-        subscription.setDisposable(source.subscribe(
-          function (x) {
-            var delay = tryCatch(selector)(x);
-            if (delay === errorObj) { return observer.onError(delay.e); }
-            var d = new SingleAssignmentDisposable();
-            delays.add(d);
-            d.setDisposable(delay.subscribe(
-              function () {
-                observer.onNext(x);
-                delays.remove(d);
-                done();
-              },
-              function (e) { observer.onError(e); },
-              function () {
-                observer.onNext(x);
-                delays.remove(d);
-                done();
-              }
-            ))
-          },
-          function (e) { observer.onError(e); },
-          function () {
-            atEnd = true;
-            subscription.dispose();
-            done();
-          }
-        ))
-      }
-
-      function done () {
-        atEnd && delays.length === 0 && observer.onCompleted();
-      }
-
-      if (!subDelay) {
-        start();
-      } else {
-        subscription.setDisposable(subDelay.subscribe(start, function (e) { observer.onError(e); }, start));
-      }
-
-      return new CompositeDisposable(subscription, delays);
-    }, this);
-  };
-
-    /**
-     *  Returns the source observable sequence, switching to the other observable sequence if a timeout is signaled.
-     * @param {Observable} [firstTimeout]  Observable sequence that represents the timeout for the first element. If not provided, this defaults to Observable.never().
-     * @param {Function} timeoutDurationSelector Selector to retrieve an observable sequence that represents the timeout between the current element and the next element.
-     * @param {Observable} [other]  Sequence to return in case of a timeout. If not provided, this is set to Observable.throwException().
-     * @returns {Observable} The source sequence switching to the other sequence in case of a timeout.
-     */
-    observableProto.timeoutWithSelector = function (firstTimeout, timeoutdurationSelector, other) {
-      if (arguments.length === 1) {
-          timeoutdurationSelector = firstTimeout;
-          firstTimeout = observableNever();
-      }
-      other || (other = observableThrow(new Error('Timeout')));
-      var source = this;
-      return new AnonymousObservable(function (observer) {
-        var subscription = new SerialDisposable(), timer = new SerialDisposable(), original = new SingleAssignmentDisposable();
-
-        subscription.setDisposable(original);
-
-        var id = 0, switched = false;
-
-        function setTimer(timeout) {
-          var myId = id;
-
-          function timerWins () {
-            return id === myId;
-          }
-
-          var d = new SingleAssignmentDisposable();
-          timer.setDisposable(d);
-          d.setDisposable(timeout.subscribe(function () {
-            timerWins() && subscription.setDisposable(other.subscribe(observer));
-            d.dispose();
-          }, function (e) {
-            timerWins() && observer.onError(e);
-          }, function () {
-            timerWins() && subscription.setDisposable(other.subscribe(observer));
-          }));
-        };
-
-        setTimer(firstTimeout);
-
-        function observerWins() {
-          var res = !switched;
-          if (res) { id++; }
-          return res;
-        }
-
-        original.setDisposable(source.subscribe(function (x) {
-          if (observerWins()) {
-            observer.onNext(x);
-            var timeout;
-            try {
-              timeout = timeoutdurationSelector(x);
-            } catch (e) {
-              observer.onError(e);
-              return;
-            }
-            setTimer(isPromise(timeout) ? observableFromPromise(timeout) : timeout);
-          }
-        }, function (e) {
-          observerWins() && observer.onError(e);
-        }, function () {
-          observerWins() && observer.onCompleted();
-        }));
-        return new CompositeDisposable(subscription, timer);
-      }, source);
-    };
-
-  /**
-   * Ignores values from an observable sequence which are followed by another value within a computed throttle duration.
-   * @param {Function} durationSelector Selector function to retrieve a sequence indicating the throttle duration for each given element.
-   * @returns {Observable} The debounced sequence.
-   */
-  observableProto.debounceWithSelector = function (durationSelector) {
-    var source = this;
-    return new AnonymousObservable(function (o) {
-      var value, hasValue = false, cancelable = new SerialDisposable(), id = 0;
-      var subscription = source.subscribe(
-        function (x) {
-          var throttle = tryCatch(durationSelector)(x);
-          if (throttle === errorObj) { return o.onError(throttle.e); }
-
-          isPromise(throttle) && (throttle = observableFromPromise(throttle));
-
-          hasValue = true;
-          value = x;
-          id++;
-          var currentid = id, d = new SingleAssignmentDisposable();
-          cancelable.setDisposable(d);
-          d.setDisposable(throttle.subscribe(
-            function () {
-              hasValue && id === currentid && o.onNext(value);
-              hasValue = false;
-              d.dispose();
-            },
-            function (e) { o.onError(e); },
-            function () {
-              hasValue && id === currentid && o.onNext(value);
-              hasValue = false;
-              d.dispose();
-            }
-          ));
-        },
-        function (e) {
-          cancelable.dispose();
-          o.onError(e);
-          hasValue = false;
-          id++;
-        },
-        function () {
-          cancelable.dispose();
-          hasValue && o.onNext(value);
-          o.onCompleted();
-          hasValue = false;
-          id++;
-        }
-      );
-      return new CompositeDisposable(subscription, cancelable);
-    }, source);
   };
 
   /**
@@ -17677,7 +18244,7 @@ observableProto.controlled = function (enableQueue, scheduler) {
    * @param {Scheduler} [scheduler] the Scheduler to use internally to manage the timers that handle timeout for each item. If not provided, defaults to Scheduler.timeout.
    * @returns {Observable} An Observable that performs the throttle operation.
    */
-  observableProto.throttleFirst = function (windowDuration, scheduler) {
+  observableProto.throttle = function (windowDuration, scheduler) {
     isScheduler(scheduler) || (scheduler = timeoutScheduler);
     var duration = +windowDuration || 0;
     if (duration <= 0) { throw new RangeError('windowDuration cannot be less or equal zero.'); }
@@ -18448,15 +19015,13 @@ Rx.Observable.prototype.flatMapWithMaxConcurrent = function(limit, selector, res
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":11}],47:[function(require,module,exports){
-arguments[4][46][0].apply(exports,arguments)
-},{"_process":11,"dup":46}],48:[function(require,module,exports){
+},{"_process":13}],53:[function(require,module,exports){
 module.exports={
-  "name": "RxBing",
+  "name": "rx-bing-map",
   "description": "A reactive extension for the Bing maps rendering control",
   "version": "0.0.1",
   "license": "MIT",
-  "main": "RxBing.js",
+  "main": "./RxBingMap.js",
   "repository": "erikschlegel/RxBing",
   "BingMapsLibrary": "http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0",
   "maintainers": [
@@ -18471,30 +19036,33 @@ module.exports={
     "babel": "^5.8.21",
     "babelify": "^6.1.3",
     "browserify-shim": "^3.8.3",
-    "envify": "^3.2.0",
     "grunt": "^0.4.5",
     "grunt-bower-task": "^0.4.0",
     "grunt-browserify": "^4.0.0",
     "grunt-cli": "^0.1.13",
     "grunt-contrib-watch": "^0.6.1",
-    "grunt-jscs": "^2.1.0",
     "grunt-mocha-test": "*",
-    "grunt-watchify": "^0.1.0",
+    "grunt-bower-install": "*",
+    "express": "*",
     "jscs": "^2.1.0"
   },
   "dependencies": {
-    "rx" : "*",
-    "rx-dom" : "*"  
+    "extend": "^3.0.0",
+    "machinepack-rxbing": "*",
+    "rx": "*",
+    "rx-bing-services": "0.0.1",
+    "rx-dom": "*"
   },
   "browserify": {
-        "transform": [
-            "babelify"
-        ]
+    "transform": [
+      "babelify"
+    ]
   },
   "scripts": {
-    "test": "grunt build",
-    "build": "grunt build"
+    "server-start": "node test-server.js",
+    "build": "grunt build", 
+    "build-examples": "grunt browserify:example"
   }
 }
 
-},{}]},{},[1]);
+},{}]},{},[3]);
