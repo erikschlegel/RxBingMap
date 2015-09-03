@@ -5,4 +5,5 @@ deploy:
   provider: azure_web_apps
 
 before_install:
+  - npm install -g grunt
   - npm run build-examples
