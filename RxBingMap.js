@@ -100,9 +100,9 @@ export default class RxBing {
 			},
 			mouseout: (ev) => {
 				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
-					let pin = ev.target;
 					var tooltip = document.getElementById(this.pushpinKey(ev.target._location));
-					$(tooltip).fadeOut("slow");
+					//$(tooltip).fadeOut("slow");
+					tooltip.classList.add('fade-out');
 					//this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
 				}
 			}

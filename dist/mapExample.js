@@ -155,9 +155,9 @@ var RxBing = (function () {
 				},
 				mouseout: function mouseout(ev) {
 					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
-						var pin = ev.target;
 						var tooltip = document.getElementById(_this3.pushpinKey(ev.target._location));
-						$(tooltip).fadeOut("slow");
+						//$(tooltip).fadeOut("slow");
+						tooltip.classList.add('fade-out');
 						//this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
 					}
 				}
@@ -12223,7 +12223,7 @@ module.exports={
   },
   "scripts": {
     "server-start": "node test-server.js",
-    "build": "grunt build && bower install", 
+    "build": "npm install -g bower && bower install", 
     "build-examples": "grunt browserify:example"
   }
 }
