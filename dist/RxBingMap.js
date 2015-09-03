@@ -43,40 +43,6 @@ var _extend2 = _interopRequireDefault(_extend);
 
 var defaultToolTipCssAlias = 'tooltip';
 //only way to make a function a private member in ES6 classes, until ES7 is out and supports 'private'.
-var createTooltip = function createTooltip(pin, pinOpts) {
-	if (pinOpts.tooltipText) {
-		pinOpts['text'] = pinOpts.tooltipText;
-		pin.setOptions(pinOpts);
-	}
-};
-
-var pushpinDefaultHandlers = function pushpinDefaultHandlers(options) {
-	return {
-		mouseover: function mouseover(ev) {
-			if (ev.targetType === 'pushpin') {
-				var domTarget = ev.target.cm1002_er_etr.dom,
-				    container = '.' + options.tooltipCssAlias + '_container_bottom',
-				    wt = undefined,
-				    ml = undefined;
-				$(domTarget).after(ev.target._text);
-
-				wt = $(container).outerWidth();
-				ml = -(wt / 2 + 20);
-
-				$(container).css('top', ev.pageY + 20);
-				$(container).css('left', ev.pageX);
-				$(container).css('margin-left', ml + 'px');
-
-				$(container).fadeIn('200');
-			}
-		},
-		mouseout: function mouseout(ev) {
-			if (ev.target.targetType === 'pushpin') {
-				$('.' + options.tooltipCssAlias + '_container_bottom').remove();
-			}
-		}
-	};
-};
 
 var RxBing = (function () {
 	function RxBing(options) {
@@ -84,9 +50,9 @@ var RxBing = (function () {
 
 		var fromEvent = _rx2['default'].Observable.fromEvent;
 		this.options = options;
+		this.tooltipMap = new Map();
 		this.MapReferenceId = options.MapReferenceId;
 		this.options.tooltipCssAlias = this.options.tooltipCssAlias || defaultToolTipCssAlias;
-		//utils.include(pkg.BingMapsLibrary);
 		fromEvent(document.body, 'load').subscribe(this.initialize());
 	}
 
@@ -96,6 +62,11 @@ var RxBing = (function () {
 			if (this.options.BingTheme) this.UseBingTheme();
 
 			this.render();
+		}
+	}, {
+		key: 'pushpinKey',
+		value: function pushpinKey(pinLocation) {
+			return "{0}-{1}".format(pinLocation.latitude, pinLocation.longitude);
 		}
 	}, {
 		key: 'registerMapHandlers',
@@ -115,6 +86,17 @@ var RxBing = (function () {
 					});
 				}
 			});
+		}
+	}, {
+		key: 'createTooltip',
+		value: function createTooltip(pinDef) {
+			if (pinDef.pinOptions.tooltipText) {
+				var infoBoxKey = this.pushpinKey(pinDef.location);
+				var tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div') ? "<div id='{1}' class='qtip-bootstrap'>{0}</div>" : "{0}").format(pinDef.pinOptions.tooltipText, infoBoxKey);
+				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), { htmlContent: tipText, visible: false, id: infoBoxKey });
+				this.tooltipMap.set(infoBoxKey, pinInfobox);
+				this.map.entities.push(pinInfobox);
+			}
 		}
 	}, {
 		key: 'setCurrentPosition',
@@ -159,6 +141,29 @@ var RxBing = (function () {
 			geoLocationProvider.getCurrentPosition();
 		}
 	}, {
+		key: 'pushpinDefaultHandlers',
+		value: function pushpinDefaultHandlers(options) {
+			var _this3 = this;
+
+			return {
+				mouseover: function mouseover(ev) {
+					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
+						var pin = ev.target;
+						_this3.tooltipMap.get(_this3.pushpinKey(pin._location)).setOptions({ visible: true });
+						//$(ev.originalEvent.relatedTarget).fadeIn('200');
+					}
+				},
+				mouseout: function mouseout(ev) {
+					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
+						var pin = ev.target;
+						var tooltip = document.getElementById(_this3.pushpinKey(ev.target._location));
+						$(tooltip).fadeOut("slow");
+						//this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
+					}
+				}
+			};
+		}
+	}, {
 		key: 'render',
 		value: function render() {
 			var options = (0, _extend2['default'])(true, {}, this.defaultOptions(), this.options);
@@ -171,23 +176,29 @@ var RxBing = (function () {
 	}, {
 		key: 'showTraffic',
 		value: function showTraffic() {
-			var _this3 = this;
+			var _this4 = this;
 
 			Microsoft.Maps.loadModule('Microsoft.Maps.Traffic', { callback: function callback() {
-					return new Microsoft.Maps.Traffic.TrafficManager(_this3.map).show();
+					return new Microsoft.Maps.Traffic.TrafficManager(_this4.map).show();
 				} });
+		}
+	}, {
+		key: 'clearEntities',
+		value: function clearEntities() {
+			this.map.entities.clear();
+			this.tooltipMap.clear();
 		}
 	}, {
 		key: 'pushPins',
 		value: function pushPins(pinSet, customHandlers) {
-			var _this4 = this;
+			var _this5 = this;
 
 			var source = _rx2['default'].Observable.from(pinSet).subscribe(function (pinDef) {
 				if (pinDef.location && pinDef.pinOptions) {
+					_this5.createTooltip(pinDef, _this5.map);
 					var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions);
-					createTooltip(newPin, pinDef.pinOptions);
-					_this4.registerRxEventSequence((0, _extend2['default'])(true, {}, pushpinDefaultHandlers(_this4.options), customHandlers || {}), newPin);
-					_this4.map.entities.push(newPin);
+					_this5.registerRxEventSequence((0, _extend2['default'])(true, {}, _this5.pushpinDefaultHandlers(_this5.options), customHandlers || {}), newPin);
+					_this5.map.entities.push(newPin);
 				} else {
 					console.error('Unable to add pin due to unprovided coords and/or opts');
 				}
@@ -212,10 +223,10 @@ var RxBing = (function () {
 	}, {
 		key: 'UseBingTheme',
 		value: function UseBingTheme() {
-			var _this5 = this;
+			var _this6 = this;
 
 			Microsoft.Maps.loadModule('Microsoft.Maps.Themes.BingTheme', { callback: function callback() {
-					return _this5.options = (0, _extend2['default'])(true, {}, _this5.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
+					return _this6.options = (0, _extend2['default'])(true, {}, _this6.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
 				} });
 		}
 	}, {
@@ -11852,9 +11863,8 @@ module.exports={
   },
   "dependencies": {
     "extend": "^3.0.0",
-    "machinepack-rxbing": "*",
     "rx": "*",
-    "rx-bing-services": "0.0.1",
+    "rx-bing-services": "*",
     "rx-dom": "*"
   },
   "browserify": {

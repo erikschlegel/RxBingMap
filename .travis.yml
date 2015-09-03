@@ -3,3 +3,6 @@ node_js:
   - "0.10"
 deploy:  
   provider: azure_web_apps
+
+install:
+  - npm run build
