@@ -4,5 +4,6 @@ node_js:
 deploy:  
   provider: azure_web_apps
 
-before_script:
-  - npm run build
+before_install:
+  - npm install -g bower
+  - bower install
