@@ -257,7 +257,7 @@ function mySurroundings(location, responseCB) {
   var rsp = BingServices.whatsAroundMe({
     apiKey: APIKey,
     location: "{0},{1}".format(location.latitude, location.longitude),
-    top: 10,
+    top: 20,
     radius: 1
   }, {
     // Request validation error occured
@@ -318,7 +318,7 @@ map.registerMapHandlers({ click: function click(result) {
                BingServicesImpl.mySurroundings(loc, function (response) {
                     _rx2['default'].Observable.from(BingServicesImpl.fromRspToSpatialEntities(response)).subscribe(function (entity) {
                          var entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
-                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b>{0}</b>: {1}".format(entityInfo.EntityType, entity.DisplayName))]);
+                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b><u>{0}</u></b>: {1}<br>{2} {3},{4} {5}".format(entityInfo.EntityType, entity.DisplayName, entity.AddressLine, entity.Locality, entity.AdminDistrict, entity.PostalCode))]);
                     }, function (error) {
                          return console.log('An error occured converting the response into an observable: ' + error);
                     });
@@ -333,8 +333,10 @@ var constructMapPin = function constructMapPin(location, icon, tooltipText) {
      };
 
      var pinOpts = {
-          draggable: true,
+          draggable: false,
           tooltipText: tooltipText,
+          height: 40,
+          width: 40,
           textOffset: new Microsoft.Maps.Point(0, 0)
      };
 
@@ -533,8 +535,8 @@ module.exports={
   "4444": { "EntityType": "Named Place", "icon": "" },
   "4482": { "EntityType": "Ferry Terminal", "icon": "ship" },
   "4493": { "EntityType": "Marina", "icon": "ship" },
-  "4580": { "EntityType": "Public Sports Airport", "icon": "" },
-  "4581": { "EntityType": "Airport", "icon": "" },
+  "4580": { "EntityType": "Public Sports Airport", "icon": "airport" },
+  "4581": { "EntityType": "Airport", "icon": "airport" },
   "5000": { "EntityType": "Business Facility", "icon": "" },
   "5400": { "EntityType": "Grocery Store", "icon": "cart-plus" },
   "5511": { "EntityType": "Auto Dealerships", "icon": "car" },
@@ -544,24 +546,24 @@ module.exports={
   "5800": { "EntityType": "Restaurant", "icon": "cutlery" },
   "5813": { "EntityType": "Nightlife", "icon": "drinks" },
   "5999": { "EntityType": "Historical Monument", "icon": "" },
-  "6000": { "EntityType": "Bank", "icon": "bank" },
+  "6000": { "EntityType": "Bank", "icon": "bank-court" },
   "6512": { "EntityType": "Shopping", "icon": "" },
   "7011": { "EntityType": "Hotel", "icon": "hotel" },
   "7012": { "EntityType": "Ski Resort", "icon": "" },
   "7013": { "EntityType": "Other Accommodation", "icon": "" },
   "7014": { "EntityType": "Ski Lift", "icon": "" },
-  "7389": { "EntityType": "Tourist Information", "icon": "glass" },
+  "7389": { "EntityType": "Tourist Information", "icon": "tourist-info" },
   "7510": { "EntityType": "Rental Car Agency", "icon": "" },
-  "7520": { "EntityType": "Parking Lot", "icon": "" },
-  "7521": { "EntityType": "Parking Garage/House", "icon": "" },
-  "7522": { "EntityType": "Park & Ride", "icon": "" },
-  "7538": { "EntityType": "Auto Service & Maintenance", "icon": "" },
+  "7520": { "EntityType": "Parking Lot", "icon": "parking" },
+  "7521": { "EntityType": "Parking Garage/House", "icon": "parking" },
+  "7522": { "EntityType": "Park & Ride", "icon": "parking" },
+  "7538": { "EntityType": "Auto Service & Maintenance", "icon": "car" },
   "7832": { "EntityType": "Cinema", "icon": "movies" },
   "7897": { "EntityType": "Rest Area", "icon": "" },
-  "7929": { "EntityType": "Performing Arts", "icon": "" },
+  "7929": { "EntityType": "Performing Arts", "icon": "performing-arts" },
   "7933": { "EntityType": "Bowling Centre", "icon": "" },
   "7940": { "EntityType": "Sports Complex", "icon": "soccer-ball-o" },
-  "7947": { "EntityType": "Park/Recreation Area", "icon": "" },
+  "7947": { "EntityType": "Park/Recreation Area", "icon": "park" },
   "7985": { "EntityType": "Casino", "icon": "" },
   "7990": { "EntityType": "Convention/Exhibition Centre", "icon": "" },
   "7992": { "EntityType": "Golf Course", "icon": "" },
@@ -569,21 +571,21 @@ module.exports={
   "7996": { "EntityType": "Amusement Park", "icon": "" },
   "7997": { "EntityType": "Sports Centre", "icon": "" },
   "7998": { "EntityType": "Ice Skating Rink", "icon": "" },
-  "7999": { "EntityType": "Tourist Attraction", "icon": "" },
+  "7999": { "EntityType": "Tourist Attraction", "icon": "tourist-spot" },
   "8060": { "EntityType": "Hospital", "icon": "" },
-  "8200": { "EntityType": "Higher Education", "icon": "" },
-  "8211": { "EntityType": "School", "icon": "" },
-  "8231": { "EntityType": "Library", "icon": "" },
-  "8410": { "EntityType": "Museum", "icon": "" },
+  "8200": { "EntityType": "Higher Education", "icon": "school" },
+  "8211": { "EntityType": "School", "icon": "school" },
+  "8231": { "EntityType": "Library", "icon": "books" },
+  "8410": { "EntityType": "Museum", "icon": "museum" },
   "8699": { "EntityType": "Automobile Club", "icon": "" },
   "9121": { "EntityType": "City Hall", "icon": "" },
-  "9211": { "EntityType": "Court House", "icon": "" },
-  "9221": { "EntityType": "Police Station", "icon": "" },
+  "9211": { "EntityType": "Court House", "icon": "bank-court" },
+  "9221": { "EntityType": "Police Station", "icon": "police-station" },
   "9517": { "EntityType": "Campground", "icon": "" },
   "9522": { "EntityType": "Truck Stop/Plaza", "icon": "" },
   "9525": { "EntityType": "Government Office", "icon": "" },
   "9530": { "EntityType": "Post Office", "icon": "" },
-  "9535": { "EntityType": "Convenience Store", "icon": "" },
+  "9535": { "EntityType": "Convenience Store", "icon": "bodega" },
   "9537": { "EntityType": "Clothing Store", "icon": "clothing-store" },
   "9545": { "EntityType": "Department Store", "icon": "general-store" },
   "9560": { "EntityType": "Home Specialty Store", "icon": "general-store" },
@@ -600,14 +602,14 @@ module.exports={
   "9715": { "EntityType": "Military Base", "icon": "" },
   "9718": { "EntityType": "Animal Park", "icon": "" },
   "9719": { "EntityType": "Truck Dealership", "icon": "" },
-  "9986": { "EntityType": "Home Improvement & Hardware Store", "icon": "" },
+  "9986": { "EntityType": "Home Improvement & Hardware Store", "icon": "hardware-store" },
   "9987": { "EntityType": "Consumer Electronics Store", "icon": "computer-store" },
   "9988": { "EntityType": "Office Supply & Services Store", "icon": "cart-plus" },
   "9991": { "EntityType": "Industrial Zone", "icon": "" },
   "9992": { "EntityType": "Place of Worship", "icon": "" },
   "9993": { "EntityType": "Embassy", "icon": "" },
   "9994": { "EntityType": "County Council", "icon": "" },
-  "9995": { "EntityType": "Bookstore", "icon": "" },
+  "9995": { "EntityType": "Bookstore", "icon": "books" },
   "9996": { "EntityType": "Coffee Shop", "icon": "coffee" },
   "9998": { "EntityType": "Hamlet", "icon": "" },
   "9999": { "EntityType": "Border Crossing"} 

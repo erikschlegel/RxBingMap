@@ -22,7 +22,7 @@ map.registerMapHandlers({click: (result) => {
                                                   let entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
                                                   map.pushPins([constructMapPin({latitude: entity.Latitude, longitude: entity.Longitude}, 
                                                                                  entityInfo.icon, 
-                                                                                 "<b>{0}</b>: {1}".format(entityInfo.EntityType, entity.DisplayName))]);
+                                                                                 "<b><u>{0}</u></b>: {1}<br>{2} {3},{4} {5}".format(entityInfo.EntityType, entity.DisplayName, entity.AddressLine, entity.Locality, entity.AdminDistrict, entity.PostalCode))]);
                                              },
                                              (error) => console.log('An error occured converting the response into an observable: ' + error)); 
                           });
@@ -38,6 +38,8 @@ let constructMapPin = function(location, icon, tooltipText){
      let pinOpts = {
          draggable: false,
          tooltipText: tooltipText,
+         height: 40,
+         width: 40,
          textOffset: new Microsoft.Maps.Point(0, 0)
      };
 

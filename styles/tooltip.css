@@ -35,7 +35,6 @@
 
     color: white;
     border: 0 solid transparent;
-
     background: #4A4A4A;
     background-image: -webkit-gradient(linear,left top,left bottom,color-stop(0,#4A4A4A),color-stop(100%,black));
     background-image: -webkit-linear-gradient(top,#4A4A4A 0,black 100%);
@@ -45,6 +44,7 @@
     background-color: #4A4A4A;
     background-color: rgba(0,0,0,0);
     border-color: #303030;
+    min-width: 175px;
     padding: .75em;
     font: 12px arial,sans-serif;
     filter: progid:DXImageTransform.Microsoft.Gradient(GradientType=0,StartColorStr=#4a4a4a,EndColorStr=#000000);
