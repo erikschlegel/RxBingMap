@@ -19,6 +19,8 @@
     "babelify": "^6.1.3",
     "browserify-shim": "^3.8.3",
     "grunt": "^0.4.5",
+    "grunt-contrib-jshint": "~0.6.0",
+    "grunt-contrib-nodeunit": "~0.2.0",
     "grunt-bower-task": "^0.4.0",
     "grunt-browserify": "^4.0.0",
     "grunt-cli": "^0.1.13",
@@ -43,6 +45,6 @@
     "server-start": "node test-server.js",
     "build": "npm install -g bower && bower install", 
     "build-examples": "grunt browserify:example",
-    "install-examples": "npm install -g grunt && grunt browserify:example" 
+    "install-examples": "npm install grunt-cli -g && grunt browserify:example" 
   }
 }
