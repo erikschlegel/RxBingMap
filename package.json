@@ -43,6 +43,6 @@
     "server-start": "node test-server.js",
     "build": "npm install -g bower && bower install", 
     "build-examples": "grunt browserify:example",
-    "install-examples": "npm install -g grunt-cli && grunt browserify:example" 
+    "install-examples": "npm install -g grunt && grunt browserify:example" 
   }
 }
