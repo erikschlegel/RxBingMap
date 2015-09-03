@@ -41,7 +41,7 @@
   },
   "scripts": {
     "server-start": "node test-server.js",
-    "build": "grunt build && bower install", 
+    "build": "npm install -g bower && bower install", 
     "build-examples": "grunt browserify:example"
   }
 }
