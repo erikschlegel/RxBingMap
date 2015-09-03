@@ -5,7 +5,7 @@ module.exports = function (grunt) {
         bower: {
             install: {
                 options: {
-                    //targetDir: './vendor',
+                    targetDir: './vendor',
                     cleanTargetDir: true,
                     //cleanup: true,
                     install: true,
@@ -40,5 +40,5 @@ module.exports = function (grunt) {
 
     grunt.loadNpmTasks('grunt-bower-task');
     grunt.loadNpmTasks("grunt-browserify");
-    grunt.registerTask('build', ['bower:install', 'browserify:lib']);
+    grunt.registerTask('build', ['browserify:lib']);
 };

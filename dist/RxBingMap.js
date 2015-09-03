@@ -43,6 +43,40 @@ var _extend2 = _interopRequireDefault(_extend);
 
 var defaultToolTipCssAlias = 'tooltip';
 //only way to make a function a private member in ES6 classes, until ES7 is out and supports 'private'.
+var createTooltip = function createTooltip(pin, pinOpts) {
+	if (pinOpts.tooltipText) {
+		pinOpts['text'] = pinOpts.tooltipText;
+		pin.setOptions(pinOpts);
+	}
+};
+
+var pushpinDefaultHandlers = function pushpinDefaultHandlers(options) {
+	return {
+		mouseover: function mouseover(ev) {
+			if (ev.targetType === 'pushpin') {
+				var domTarget = ev.target.cm1002_er_etr.dom,
+				    container = '.' + options.tooltipCssAlias + '_container_bottom',
+				    wt = undefined,
+				    ml = undefined;
+				$(domTarget).after(ev.target._text);
+
+				wt = $(container).outerWidth();
+				ml = -(wt / 2 + 20);
+
+				$(container).css('top', ev.pageY + 20);
+				$(container).css('left', ev.pageX);
+				$(container).css('margin-left', ml + 'px');
+
+				$(container).fadeIn('200');
+			}
+		},
+		mouseout: function mouseout(ev) {
+			if (ev.target.targetType === 'pushpin') {
+				$('.' + options.tooltipCssAlias + '_container_bottom').remove();
+			}
+		}
+	};
+};
 
 var RxBing = (function () {
 	function RxBing(options) {
@@ -50,9 +84,9 @@ var RxBing = (function () {
 
 		var fromEvent = _rx2['default'].Observable.fromEvent;
 		this.options = options;
-		this.tooltipMap = new Map();
 		this.MapReferenceId = options.MapReferenceId;
 		this.options.tooltipCssAlias = this.options.tooltipCssAlias || defaultToolTipCssAlias;
+		//utils.include(pkg.BingMapsLibrary);
 		fromEvent(document.body, 'load').subscribe(this.initialize());
 	}
 
@@ -62,11 +96,6 @@ var RxBing = (function () {
 			if (this.options.BingTheme) this.UseBingTheme();
 
 			this.render();
-		}
-	}, {
-		key: 'pushpinKey',
-		value: function pushpinKey(pinLocation) {
-			return "{0}-{1}".format(pinLocation.latitude, pinLocation.longitude);
 		}
 	}, {
 		key: 'registerMapHandlers',
@@ -86,16 +115,6 @@ var RxBing = (function () {
 					});
 				}
 			});
-		}
-	}, {
-		key: 'createTooltip',
-		value: function createTooltip(pinDef) {
-			if (pinDef.pinOptions.tooltipText) {
-				var tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div') ? "<div class='qtip-bootstrap'>{0}</div>" : "{0}").format(pinDef.pinOptions.tooltipText);
-				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), { htmlContent: tipText, visible: false });
-				this.tooltipMap.set(this.pushpinKey(pinDef.location), pinInfobox);
-				this.map.entities.push(pinInfobox);
-			}
 		}
 	}, {
 		key: 'setCurrentPosition',
@@ -140,26 +159,6 @@ var RxBing = (function () {
 			geoLocationProvider.getCurrentPosition();
 		}
 	}, {
-		key: 'pushpinDefaultHandlers',
-		value: function pushpinDefaultHandlers(options) {
-			var _this3 = this;
-
-			return {
-				mouseover: function mouseover(ev) {
-					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
-						var pin = ev.target;
-						_this3.tooltipMap.get(_this3.pushpinKey(pin._location)).setOptions({ visible: true });
-					}
-				},
-				mouseout: function mouseout(ev) {
-					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
-						var pin = ev.target;
-						_this3.tooltipMap.get(_this3.pushpinKey(pin._location)).setOptions({ visible: false });
-					}
-				}
-			};
-		}
-	}, {
 		key: 'render',
 		value: function render() {
 			var options = (0, _extend2['default'])(true, {}, this.defaultOptions(), this.options);
@@ -172,29 +171,23 @@ var RxBing = (function () {
 	}, {
 		key: 'showTraffic',
 		value: function showTraffic() {
-			var _this4 = this;
+			var _this3 = this;
 
 			Microsoft.Maps.loadModule('Microsoft.Maps.Traffic', { callback: function callback() {
-					return new Microsoft.Maps.Traffic.TrafficManager(_this4.map).show();
+					return new Microsoft.Maps.Traffic.TrafficManager(_this3.map).show();
 				} });
-		}
-	}, {
-		key: 'clearEntities',
-		value: function clearEntities() {
-			this.map.entities.clear();
-			this.tooltipMap.clear();
 		}
 	}, {
 		key: 'pushPins',
 		value: function pushPins(pinSet, customHandlers) {
-			var _this5 = this;
+			var _this4 = this;
 
 			var source = _rx2['default'].Observable.from(pinSet).subscribe(function (pinDef) {
 				if (pinDef.location && pinDef.pinOptions) {
-					_this5.createTooltip(pinDef, _this5.map);
 					var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions);
-					_this5.registerRxEventSequence((0, _extend2['default'])(true, {}, _this5.pushpinDefaultHandlers(_this5.options), customHandlers || {}), newPin);
-					_this5.map.entities.push(newPin);
+					createTooltip(newPin, pinDef.pinOptions);
+					_this4.registerRxEventSequence((0, _extend2['default'])(true, {}, pushpinDefaultHandlers(_this4.options), customHandlers || {}), newPin);
+					_this4.map.entities.push(newPin);
 				} else {
 					console.error('Unable to add pin due to unprovided coords and/or opts');
 				}
@@ -219,10 +212,10 @@ var RxBing = (function () {
 	}, {
 		key: 'UseBingTheme',
 		value: function UseBingTheme() {
-			var _this6 = this;
+			var _this5 = this;
 
 			Microsoft.Maps.loadModule('Microsoft.Maps.Themes.BingTheme', { callback: function callback() {
-					return _this6.options = (0, _extend2['default'])(true, {}, _this6.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
+					return _this5.options = (0, _extend2['default'])(true, {}, _this5.options, { theme: new Microsoft.Maps.Themes.BingTheme() });
 				} });
 		}
 	}, {
@@ -242,108 +235,7 @@ var RxBing = (function () {
 exports['default'] = RxBing;
 module.exports = exports['default'];
 
-},{"./package.json":12,"extend":5,"rx":11,"rx-dom":10}],2:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-  value: true
-});
-exports.mySurroundings = mySurroundings;
-var BingServices = require('rx-bing-services');
-
-var APIKey = 'Aji7ARlyYm81OWlGyWxr8DCdPFhUtbYyAYq1LcAKgFoYh1Q6Dx5Sqvybk8qVTtir';
-
-function mySurroundings(location, responseCB) {
-  var rsp = BingServices.whatsAroundMe({
-    apiKey: APIKey,
-    location: "{0},{1}".format(location.latitude, location.longitude),
-    top: 10,
-    radius: 1
-  }, {
-    // Request validation error occured
-    error: function error(e) {
-      console.log('Received a validation error:\n', e);
-    }
-  }).subscribe(responseCB, function (error) {
-    console.log("There was an error with the bing service call: " + error);
-  });
-}
-
-var _rxBingServices = require('rx-bing-services');
-
-Object.defineProperty(exports, 'fromRspToSpatialEntities', {
-  enumerable: true,
-  get: function get() {
-    return _rxBingServices.fromRspToSpatialEntities;
-  }
-});
-Object.defineProperty(exports, 'getEntityTypeDetails', {
-  enumerable: true,
-  get: function get() {
-    return _rxBingServices.getEntityTypeDetails;
-  }
-});
-
-},{"rx-bing-services":7}],3:[function(require,module,exports){
-'use strict';
-
-function _interopRequireDefault(obj) {
-     return obj && obj.__esModule ? obj : { 'default': obj };
-}
-
-var _RxBingMap = require('../RxBingMap');
-
-var _RxBingMap2 = _interopRequireDefault(_RxBingMap);
-
-var _rx = require('rx');
-
-var _rx2 = _interopRequireDefault(_rx);
-
-var BingServicesImpl = require('./BingSpatialDataService');
-
-var map = new _RxBingMap2['default']({ MapReferenceId: "mapDiv",
-     credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
-     BingTheme: true,
-     CenterMap: true,
-     ShowTraffic: true });
-
-map.registerMapHandlers({ click: function click(result) {
-          if (result.targetType == "map") {
-               map.clearEntities(); //Avoid your browser dying slow and painfully
-               var point = new Microsoft.Maps.Point(result.getX(), result.getY());
-               var loc = result.target.tryPixelToLocation(point);
-               map.pushPins([constructMapPin(loc, '', "Location for {0},{1}".format(loc.latitude, loc.longitude))]);
-
-               //Call Whats around me to pin your surroundings
-               BingServicesImpl.mySurroundings(loc, function (response) {
-                    _rx2['default'].Observable.from(BingServicesImpl.fromRspToSpatialEntities(response)).subscribe(function (entity) {
-                         var entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
-                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b>{0}</b>: {1}".format(entityInfo.EntityType, entity.DisplayName))]);
-                    }, function (error) {
-                         return console.log('An error occured converting the response into an observable: ' + error);
-                    });
-               });
-          }
-     } });
-
-var constructMapPin = function constructMapPin(location, icon, tooltipText) {
-     var coords = {
-          'latitude': location.latitude,
-          'longitude': location.longitude
-     };
-
-     var pinOpts = {
-          draggable: true,
-          tooltipText: tooltipText,
-          textOffset: new Microsoft.Maps.Point(0, 0)
-     };
-
-     if (icon) pinOpts['icon'] = '/lib/images/' + icon + '.png';
-
-     return { location: coords, pinOptions: pinOpts };
-};
-
-},{"../RxBingMap":1,"./BingSpatialDataService":2,"rx":11}],4:[function(require,module,exports){
+},{"./package.json":7,"extend":3,"rx":6,"rx-dom":5}],2:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -435,7 +327,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],5:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 'use strict';
 
 var hasOwn = Object.prototype.hasOwnProperty;
@@ -523,253 +415,7 @@ module.exports = function extend() {
 };
 
 
-},{}],6:[function(require,module,exports){
-module.exports={
-  "2084": { "EntityType": "Winery", "icon": "glass" },
-  "3578": { "EntityType": "ATM", "icon": "atm" },
-  "4013": { "EntityType": "Train Station", "icon": "train" },
-  "4100": { "EntityType": "Commuter Rail Station", "icon": "train" },
-  "4170": { "EntityType": "Bus Station", "icon": "bus" },
-  "4444": { "EntityType": "Named Place", "icon": "" },
-  "4482": { "EntityType": "Ferry Terminal", "icon": "ship" },
-  "4493": { "EntityType": "Marina", "icon": "ship" },
-  "4580": { "EntityType": "Public Sports Airport", "icon": "" },
-  "4581": { "EntityType": "Airport", "icon": "" },
-  "5000": { "EntityType": "Business Facility", "icon": "" },
-  "5400": { "EntityType": "Grocery Store", "icon": "cart-plus" },
-  "5511": { "EntityType": "Auto Dealerships", "icon": "car" },
-  "5512": { "EntityType": "Auto Dealership-Used Cars", "icon": "car" },
-  "5540": { "EntityType": "Petrol/Gasoline Station", "icon": "car" },
-  "5571": { "EntityType": "Motorcycle Dealership", "icon": "motorcycle" },
-  "5800": { "EntityType": "Restaurant", "icon": "cutlery" },
-  "5813": { "EntityType": "Nightlife", "icon": "drinks" },
-  "5999": { "EntityType": "Historical Monument", "icon": "" },
-  "6000": { "EntityType": "Bank", "icon": "bank" },
-  "6512": { "EntityType": "Shopping", "icon": "" },
-  "7011": { "EntityType": "Hotel", "icon": "hotel" },
-  "7012": { "EntityType": "Ski Resort", "icon": "" },
-  "7013": { "EntityType": "Other Accommodation", "icon": "" },
-  "7014": { "EntityType": "Ski Lift", "icon": "" },
-  "7389": { "EntityType": "Tourist Information", "icon": "glass" },
-  "7510": { "EntityType": "Rental Car Agency", "icon": "" },
-  "7520": { "EntityType": "Parking Lot", "icon": "" },
-  "7521": { "EntityType": "Parking Garage/House", "icon": "" },
-  "7522": { "EntityType": "Park & Ride", "icon": "" },
-  "7538": { "EntityType": "Auto Service & Maintenance", "icon": "" },
-  "7832": { "EntityType": "Cinema", "icon": "movies" },
-  "7897": { "EntityType": "Rest Area", "icon": "" },
-  "7929": { "EntityType": "Performing Arts", "icon": "" },
-  "7933": { "EntityType": "Bowling Centre", "icon": "" },
-  "7940": { "EntityType": "Sports Complex", "icon": "soccer-ball-o" },
-  "7947": { "EntityType": "Park/Recreation Area", "icon": "" },
-  "7985": { "EntityType": "Casino", "icon": "" },
-  "7990": { "EntityType": "Convention/Exhibition Centre", "icon": "" },
-  "7992": { "EntityType": "Golf Course", "icon": "" },
-  "7994": { "EntityType": "Civic/Community Centre", "icon": "" },
-  "7996": { "EntityType": "Amusement Park", "icon": "" },
-  "7997": { "EntityType": "Sports Centre", "icon": "" },
-  "7998": { "EntityType": "Ice Skating Rink", "icon": "" },
-  "7999": { "EntityType": "Tourist Attraction", "icon": "" },
-  "8060": { "EntityType": "Hospital", "icon": "" },
-  "8200": { "EntityType": "Higher Education", "icon": "" },
-  "8211": { "EntityType": "School", "icon": "" },
-  "8231": { "EntityType": "Library", "icon": "" },
-  "8410": { "EntityType": "Museum", "icon": "" },
-  "8699": { "EntityType": "Automobile Club", "icon": "" },
-  "9121": { "EntityType": "City Hall", "icon": "" },
-  "9211": { "EntityType": "Court House", "icon": "" },
-  "9221": { "EntityType": "Police Station", "icon": "" },
-  "9517": { "EntityType": "Campground", "icon": "" },
-  "9522": { "EntityType": "Truck Stop/Plaza", "icon": "" },
-  "9525": { "EntityType": "Government Office", "icon": "" },
-  "9530": { "EntityType": "Post Office", "icon": "" },
-  "9535": { "EntityType": "Convenience Store", "icon": "" },
-  "9537": { "EntityType": "Clothing Store", "icon": "clothing-store" },
-  "9545": { "EntityType": "Department Store", "icon": "general-store" },
-  "9560": { "EntityType": "Home Specialty Store", "icon": "general-store" },
-  "9565": { "EntityType": "Pharmacy", "icon": "pharmacy" },
-  "9567": { "EntityType": "Specialty Store", "icon": "general-store" },
-  "9568": { "EntityType": "Sporting Goods Store", "icon": "cart-plus" },
-  "9583": { "EntityType": "Medical Service", "icon": "" },
-  "9590": { "EntityType": "Residential Area/Building", "icon": "" },
-  "9591": { "EntityType": "Cemetery", "icon": "" },
-  "9592": { "EntityType": "Highway Exit", "icon": "" },
-  "9593": { "EntityType": "Transportation Service", "icon": "" },
-  "9710": { "EntityType": "Weigh Station", "icon": "" },
-  "9714": { "EntityType": "Cargo Centre", "icon": "" },
-  "9715": { "EntityType": "Military Base", "icon": "" },
-  "9718": { "EntityType": "Animal Park", "icon": "" },
-  "9719": { "EntityType": "Truck Dealership", "icon": "" },
-  "9986": { "EntityType": "Home Improvement & Hardware Store", "icon": "" },
-  "9987": { "EntityType": "Consumer Electronics Store", "icon": "computer-store" },
-  "9988": { "EntityType": "Office Supply & Services Store", "icon": "cart-plus" },
-  "9991": { "EntityType": "Industrial Zone", "icon": "" },
-  "9992": { "EntityType": "Place of Worship", "icon": "" },
-  "9993": { "EntityType": "Embassy", "icon": "" },
-  "9994": { "EntityType": "County Council", "icon": "" },
-  "9995": { "EntityType": "Bookstore", "icon": "" },
-  "9996": { "EntityType": "Coffee Shop", "icon": "coffee" },
-  "9998": { "EntityType": "Hamlet", "icon": "" },
-  "9999": { "EntityType": "Border Crossing"} 
-}
-},{}],7:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-		value: true
-});
-exports.validateInput = validateInput;
-
-function _interopExportWildcard(obj, defaults) { var newObj = defaults({}, obj); delete newObj['default']; return newObj; }
-
-function _defaults(obj, defaults) { var keys = Object.getOwnPropertyNames(defaults); for (var i = 0; i < keys.length; i++) { var key = keys[i]; var value = Object.getOwnPropertyDescriptor(defaults, key); if (value && value.configurable && obj[key] === undefined) { Object.defineProperty(obj, key, value); } } return obj; }
-
-var _whatsAroundMe = require('./whats-around-me');
-
-_defaults(exports, _interopExportWildcard(_whatsAroundMe, _defaults));
-
-function validateInput(supportedInputs, requestedInputs) {
-		var errorSet = new Set();
-
-		Object.keys(supportedInputs).forEach(function (item) {
-				if (supportedInputs.hasOwnProperty(item)) {
-						var input = supportedInputs[item];
-						if (input.required && !requestedInputs.hasOwnProperty(item)) errorSet.add({ field: input, errorMsg: 'Required Field is missing' });
-				}
-		});
-
-		return errorSet;
-}
-
-String.prototype.format = function () {
-		var content = this;
-		for (var i = 0; i < arguments.length; i++) {
-				var replacement = '{' + i + '}';
-				content = content.replace(replacement, arguments[i]);
-		}
-		return content;
-};
-
-},{"./whats-around-me":8}],8:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-    value: true
-});
-exports.whatsAroundMe = whatsAroundMe;
-exports.getEntityTypeDetails = getEntityTypeDetails;
-exports.fromRspToSpatialEntities = fromRspToSpatialEntities;
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
-var _rx = require('rx');
-
-var _rx2 = _interopRequireDefault(_rx);
-
-var _rxDom = require('rx-dom');
-
-var _rxDom2 = _interopRequireDefault(_rxDom);
-
-var _extend = require('extend');
-
-var _extend2 = _interopRequireDefault(_extend);
-
-var _index = require('./index');
-
-var _dataEntityTypesJson = require('./data/entityTypes.json');
-
-var _dataEntityTypesJson2 = _interopRequireDefault(_dataEntityTypesJson);
-
-var serviceUrl = 'https://spatial.virtualearth.net/REST/v1/data/f22876ec257b474b82fe2ffcb8393150';
-var bingDSDefault = 'NAVTEQNA';
-var bingPOIDefault = 'NavteqPOIs';
-
-var supportedInputs = {
-    apiKey: {
-        example: '232edfdnfddf4450',
-        description: 'Your api access key to access bing spatial data services. This can be obtained at https://msdn.microsoft.com/en-us/library/ff428642.aspx',
-        required: true
-    },
-    location: {
-        example: '34.23245532,-40.47464. {latitude},{longitude}',
-        description: 'The users latitude and longitude',
-        required: true
-    },
-    select: {
-        example: 'Latitude,Longitude,IsWiFiHotSpot,DisplayName',
-        description: 'The selection fields from the bing spatial data source',
-        required: false
-    },
-    datasourceName: {
-        example: 'NAVTEQNA',
-        description: 'The Bing spatial data public data source name to query',
-        required: false
-    },
-    poiName: {
-        example: 'NavteqPOIs',
-        description: 'The point of interest name',
-        required: false
-    },
-    filter: {
-        example: 'StartsWith(PrimaryCity, Clear) eq true',
-        description: 'The Odata filter for the bing spatial data query',
-        required: false
-    },
-    orberByClause: {
-        example: 'IsWheelchairAccessible',
-        description: 'The Odata filter for the bing spatial data query',
-        required: false
-    },
-    top: {
-        example: '3',
-        description: 'Sets the max returned alllwable results',
-        required: false
-    },
-    radius: {
-        example: '1',
-        description: 'Spatial data filter radius(in kilometers)',
-        required: true
-    }
-};
-
-var validateRequest = function validateRequest(input) {
-    return input.location.split(',').length == 2;
-};
-
-function whatsAroundMe(input, exits) {
-    var errors = (0, _index.validateInput)(input);
-    if (errors.size > 0) return exits.error({ description: 'input validation failed', errorSet: errors });
-
-    if (!validateRequest(input)) return exits.error({ description: 'request failed validation check' });
-
-    var coords = input.location.split(',');
-
-    var spatialFilter = "spatialFilter=nearby({0},{1},{2})".format(coords[0], coords[1], input.radius);
-    var select = "$select={0}".format(input.select || '*');
-    var filter = input.filter ? "&$filter={0}".format(input.filter) : '';
-    var order = input.order ? "&$orderby={0}".format(input.order) : '';
-    var top = "$top={0}".format(input.top || 5);
-
-    var BingURL = "{0}/{1}/{2}?key={3}&{4}&{5}&{6}{7}{8}&$format=json&jsonp=JSONPCallback".format(serviceUrl, input.datasourceName || bingDSDefault, input.poiName || bingPOIDefault, input.apiKey, spatialFilter, select, top, filter, order);
-
-    return _rx2['default'].DOM.jsonpRequest({ url: BingURL, jsonp: 'JSONPCallback' });
-}
-
-;
-
-function getEntityTypeDetails(entityTypeId) {
-    var entityDetails = _dataEntityTypesJson2['default'][entityTypeId] || {};
-
-    return entityDetails;
-}
-
-;
-
-function fromRspToSpatialEntities(bingRsp) {
-    return bingRsp && bingRsp.response && bingRsp.response.d && bingRsp.response.d.results ? bingRsp.response.d.results : [];
-}
-
-},{"./data/entityTypes.json":6,"./index":7,"extend":5,"rx":11,"rx-dom":10}],9:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 (function (global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -1787,11 +1433,11 @@ function normalizeAjaxLoadEvent(e, xhr, settings) {
   return Rx;
 }));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"rx":11}],10:[function(require,module,exports){
+},{"rx":6}],5:[function(require,module,exports){
 var Rx = require('rx');
 require('./dist/rx.dom');
 module.exports = Rx;
-},{"./dist/rx.dom":9,"rx":11}],11:[function(require,module,exports){
+},{"./dist/rx.dom":4,"rx":6}],6:[function(require,module,exports){
 (function (process,global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -12173,7 +11819,7 @@ Rx.Observable.prototype.flatMapWithMaxConcurrent = function(limit, selector, res
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":4}],12:[function(require,module,exports){
+},{"_process":2}],7:[function(require,module,exports){
 module.exports={
   "name": "rx-bing-map",
   "description": "A reactive extension for the Bing maps rendering control",
@@ -12206,8 +11852,9 @@ module.exports={
   },
   "dependencies": {
     "extend": "^3.0.0",
+    "machinepack-rxbing": "*",
     "rx": "*",
-    "rx-bing-services": "*",
+    "rx-bing-services": "0.0.1",
     "rx-dom": "*"
   },
   "browserify": {
@@ -12222,4 +11869,4 @@ module.exports={
   }
 }
 
-},{}]},{},[3]);
+},{}]},{},[1]);

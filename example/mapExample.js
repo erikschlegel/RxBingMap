@@ -1,8 +1,8 @@
-import RxBing from '../RxBingMap';
+import RxBingMap from '../RxBingMap';
 import Rx from 'rx';
 var BingServicesImpl = require('./BingSpatialDataService');
 
-var map = new RxBing({MapReferenceId: "mapDiv", 
+var map = new RxBingMap({MapReferenceId: "mapDiv", 
 					  credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5", 
 					  BingTheme: true,
 					  CenterMap: true,
@@ -10,9 +10,10 @@ var map = new RxBing({MapReferenceId: "mapDiv",
 
 map.registerMapHandlers({click: (result) => {
 					  	      if(result.targetType == "map"){
+                            map.clearEntities();//Avoid your browser dying slow and painfully
 					  	      	      var point = new Microsoft.Maps.Point(result.getX(), result.getY());
                   					var loc = result.target.tryPixelToLocation(point);
-					  	      	  	  map.pushPins([constructMapPin(loc, 'map-pin', "Selected location for {0},{1}".format(loc.latitude, loc.longitude))]);
+					  	      	  	  map.pushPins([constructMapPin(loc, '', "Location for {0},{1}".format(loc.latitude, loc.longitude))]);
 
                           //Call Whats around me to pin your surroundings
                           BingServicesImpl.mySurroundings(loc, (response) => {
@@ -23,10 +24,8 @@ map.registerMapHandlers({click: (result) => {
                                                                                  entityInfo.icon, 
                                                                                  "<b>{0}</b>: {1}".format(entityInfo.EntityType, entity.DisplayName))]);
                                              },
-                                             (error) => console.log('An error occured converting the response into an observable: ' + error));
-                              
+                                             (error) => console.log('An error occured converting the response into an observable: ' + error)); 
                           });
-					  	      	  //console.log("Clicked " + loc.latitude + ", " + loc.longitude);
 					  	    }
 }});
 
@@ -37,14 +36,13 @@ let constructMapPin = function(location, icon, tooltipText){
      };
 
      let pinOpts = {
-         htmlContent: '<i style="color: orange; margin:0px 0px 0px 0px;" class="fa fa-' + icon + '"></i>',
-         draggable: true,
+         draggable: false,
+         tooltipText: tooltipText,
          textOffset: new Microsoft.Maps.Point(0, 0)
      };
 
-     var pin = new Microsoft.Maps.Pushpin(coords, pinOpts);
+     if(icon)
+        pinOpts['icon'] = '/lib/images/' + icon + '.png'
 
-     return {pin: pin, tooltip: tooltipText, tooltipCssAlias: 'tooltip'};
+     return {location: coords, pinOptions: pinOpts};
 };
-
-//map.centerMap({latitude: 40.735803, longitude: -74.001374});

@@ -1,15 +1,18 @@
-import utils from './lib/utils';
 import pkg from './package.json';
 import Rx from 'rx';
 import RxDom from 'rx-dom';
 import extend from 'extend';
 
+const defaultToolTipCssAlias = 'tooltip';
+//only way to make a function a private member in ES6 classes, until ES7 is out and supports 'private'. 
+
 export default class RxBing {
 	constructor(options){
 		let fromEvent = Rx.Observable.fromEvent;
 		this.options = options;
+		this.tooltipMap = new Map();
 		this.MapReferenceId = options.MapReferenceId;
-		//utils.include(pkg.BingMapsLibrary);
+		this.options.tooltipCssAlias = this.options.tooltipCssAlias || defaultToolTipCssAlias;
 		fromEvent(document.body, 'load')
 	   .subscribe(this.initialize());	   
 	}
@@ -19,6 +22,10 @@ export default class RxBing {
 			this.UseBingTheme();
 		
 		this.render();
+	}
+
+	pushpinKey(pinLocation){
+		return "{0}-{1}".format(pinLocation.latitude, pinLocation.longitude);
 	}
 
 	registerMapHandlers(customHandlers){
@@ -33,6 +40,15 @@ export default class RxBing {
 	  	   }
 		});
 	}
+
+	createTooltip(pinDef){
+			if(pinDef.pinOptions.tooltipText){
+				let tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div')?"<div class='qtip-bootstrap'>{0}</div>":"{0}").format(pinDef.pinOptions.tooltipText);
+				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), {htmlContent: tipText, visible: false});
+				this.tooltipMap.set(this.pushpinKey(pinDef.location), pinInfobox);
+				this.map.entities.push(pinInfobox);
+			}
+    }
 
 	setCurrentPosition(){
 		var source = Rx.DOM.geolocation.getCurrentPosition();
@@ -72,6 +88,23 @@ export default class RxBing {
             geoLocationProvider.getCurrentPosition();
 	}
 
+	pushpinDefaultHandlers(options){
+		return {
+			mouseover: (ev) => {
+				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
+					let pin = ev.target;
+					this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: true});
+				}
+			},
+			mouseout: (ev) => {
+				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
+					let pin = ev.target;
+					this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
+				}
+			}
+		}
+	}
+
 	render(){
 		let options = extend(true, {}, this.defaultOptions(), this.options);
 		
@@ -87,35 +120,24 @@ export default class RxBing {
 		Microsoft.Maps.loadModule('Microsoft.Maps.Traffic', { callback: () => new Microsoft.Maps.Traffic.TrafficManager(this.map).show()});
 	}
 
-	pushPins(pinSet, customHandlers){
-		let source = Rx.Observable.from(pinSet)
-					.subscribe( (pinMe) => {
-							if(customHandlers)
-								this.registerRxEventSequence(customHandlers, pinMe);
-
-							this.map.entities.push(pinMe);
-							createTooltip(pinMe);
-					} , (error) => console.log('An error occured adding the pin set to the map: ' + error));
+	clearEntities(){
+		this.map.entities.clear();
+		this.tooltipMap.clear();
 	}
 
-	createTooltip(pin){
-		if(pin.tooltip){
-			let domTarget = pin.cm1002_er_etr.dom,
-                container = '.' + pin.tooltipCssAlias + '_container_bottom', wt, ml;
-
-                let tooltip = "<div class='{0}'><div class='{1}_content'>{2}</div></div>".format(container, pin.tooltipCssAlias, pin.tooltip);
-
-                $(domTarget).after(tooltip);
-
-                wt = $(container).outerWidth();
-                ml = -(wt / 2 + 20);
-
-                $(container).css('top', e.pageY + 20);
-                $(container).css('left', e.pageX);
-                $(container).css('margin-left', ml + 'px');
-
-                $(container).fadeIn('200');
-		}
+	pushPins(pinSet, customHandlers){
+		let source = Rx.Observable.from(pinSet)
+					.subscribe( (pinDef) => {
+							if(pinDef.location && pinDef.pinOptions){
+ 								this.createTooltip(pinDef, this.map);
+ 								var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions);
+								this.registerRxEventSequence(extend(true, {}, this.pushpinDefaultHandlers(this.options), customHandlers || {}), newPin);
+								this.map.entities.push(newPin);
+							}else{
+								console.error('Unable to add pin due to unprovided coords and/or opts');
+							}
+							
+					} , (error) => console.log('An error occured adding the pin set to the map: ' + error));
 	}
 
 	transformBingEventsToRxStream(element, action){
