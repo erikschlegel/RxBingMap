@@ -4,5 +4,5 @@ node_js:
 deploy:  
   provider: azure_web_apps
 
-install:
+after_install:
   - npm run build
