@@ -6,7 +6,7 @@ export function mySurroundings(location, responseCB){
 	var rsp = BingServices.whatsAroundMe({
  		 apiKey: APIKey,
   		 location: "{0},{1}".format(location.latitude, location.longitude),
-  		 top: 20,
+  		 top: 30,
 	 	 radius: 1
 	} , {
   // Request validation error occured

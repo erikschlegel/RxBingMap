@@ -43,9 +43,10 @@ export default class RxBing {
 
 	createTooltip(pinDef){
 			if(pinDef.pinOptions.tooltipText){
-				let tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div')?"<div class='qtip-bootstrap'>{0}</div>":"{0}").format(pinDef.pinOptions.tooltipText);
-				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), {htmlContent: tipText, visible: false});
-				this.tooltipMap.set(this.pushpinKey(pinDef.location), pinInfobox);
+				var infoBoxKey = this.pushpinKey(pinDef.location);
+				let tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div')?"<div id='{1}' class='qtip-bootstrap'>{0}</div>":"{0}").format(pinDef.pinOptions.tooltipText, infoBoxKey);
+				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), {htmlContent: tipText, visible: false, id: infoBoxKey});
+				this.tooltipMap.set(infoBoxKey, pinInfobox);
 				this.map.entities.push(pinInfobox);
 			}
     }
@@ -94,12 +95,15 @@ export default class RxBing {
 				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
 					let pin = ev.target;
 					this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: true});
+					//$(ev.originalEvent.relatedTarget).fadeIn('200');
 				}
 			},
 			mouseout: (ev) => {
 				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
 					let pin = ev.target;
-					this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
+					var tooltip = document.getElementById(this.pushpinKey(ev.target._location));
+					$(tooltip).fadeOut("slow");
+					//this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
 				}
 			}
 		}

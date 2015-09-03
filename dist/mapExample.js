@@ -91,9 +91,10 @@ var RxBing = (function () {
 		key: 'createTooltip',
 		value: function createTooltip(pinDef) {
 			if (pinDef.pinOptions.tooltipText) {
-				var tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div') ? "<div class='qtip-bootstrap'>{0}</div>" : "{0}").format(pinDef.pinOptions.tooltipText);
-				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), { htmlContent: tipText, visible: false });
-				this.tooltipMap.set(this.pushpinKey(pinDef.location), pinInfobox);
+				var infoBoxKey = this.pushpinKey(pinDef.location);
+				var tipText = (!pinDef.pinOptions.tooltipText.startsWith('<div') ? "<div id='{1}' class='qtip-bootstrap'>{0}</div>" : "{0}").format(pinDef.pinOptions.tooltipText, infoBoxKey);
+				var pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(pinDef.location.latitude, pinDef.location.longitude), { htmlContent: tipText, visible: false, id: infoBoxKey });
+				this.tooltipMap.set(infoBoxKey, pinInfobox);
 				this.map.entities.push(pinInfobox);
 			}
 		}
@@ -149,12 +150,15 @@ var RxBing = (function () {
 					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
 						var pin = ev.target;
 						_this3.tooltipMap.get(_this3.pushpinKey(pin._location)).setOptions({ visible: true });
+						//$(ev.originalEvent.relatedTarget).fadeIn('200');
 					}
 				},
 				mouseout: function mouseout(ev) {
 					if (ev.targetType === 'pushpin' && _this3.tooltipMap.has(_this3.pushpinKey(ev.target._location))) {
 						var pin = ev.target;
-						_this3.tooltipMap.get(_this3.pushpinKey(pin._location)).setOptions({ visible: false });
+						var tooltip = document.getElementById(_this3.pushpinKey(ev.target._location));
+						$(tooltip).fadeOut("slow");
+						//this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
 					}
 				}
 			};
@@ -257,7 +261,7 @@ function mySurroundings(location, responseCB) {
   var rsp = BingServices.whatsAroundMe({
     apiKey: APIKey,
     location: "{0},{1}".format(location.latitude, location.longitude),
-    top: 20,
+    top: 30,
     radius: 1
   }, {
     // Request validation error occured
