@@ -1,11 +1,11 @@
 var BingServices = require('rx-bing-services');
 
 export function mySurroundings(location, responseCB){
-	if(!process.env.BingMapsApiKey)
+	if(!process.env.BingSpatialDataServiceKey)
 		throw Error("BingMapsApiKey is not defined error");
 	
 	var rsp = BingServices.whatsAroundMe({
- 		 apiKey: process.env.BingMapsApiKey,
+ 		 apiKey: process.env.BingSpatialDataServiceKey,
   		 location: "{0},{1}".format(location.latitude, location.longitude),
   		 top: 30,
 	 	 radius: 1

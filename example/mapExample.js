@@ -2,8 +2,11 @@ import RxBingMap from '../RxBingMap';
 import Rx from 'rx';
 var BingServicesImpl = require('./BingSpatialDataService');
 
+if(!process.env.BingMapsApiKey)
+  throw Error("BingMapsApiKey is not defined error");
+
 var map = new RxBingMap({MapReferenceId: "mapDiv", 
-					  credentials: "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5", 
+					  credentials: process.env.BingMapsApiKey, 
 					  BingTheme: true,
 					  CenterMap: true,
 					  ShowTraffic: true});
