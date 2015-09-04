@@ -322,7 +322,7 @@ map.registerMapHandlers({ click: function click(result) {
                BingServicesImpl.mySurroundings(loc, function (response) {
                     _rx2['default'].Observable.from(BingServicesImpl.fromRspToSpatialEntities(response)).subscribe(function (entity) {
                          var entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
-                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b><u>{0}</u></b>: {1}<br>{2} {3},{4} {5}".format(entityInfo.EntityType, entity.DisplayName, entity.AddressLine, entity.Locality, entity.AdminDistrict, entity.PostalCode))]);
+                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "Stylish and custom CSS3<br> tooltips and pushpins<br>that's fully configurable".format(entityInfo.EntityType, entity.DisplayName, entity.AddressLine, entity.Locality, entity.AdminDistrict, entity.PostalCode))]);
                     }, function (error) {
                          return console.log('An error occured converting the response into an observable: ' + error);
                     });
@@ -12201,6 +12201,8 @@ module.exports={
     "babelify": "^6.1.3",
     "browserify-shim": "^3.8.3",
     "grunt": "^0.4.5",
+    "grunt-contrib-jshint": "~0.6.0",
+    "grunt-contrib-nodeunit": "~0.2.0",
     "grunt-bower-task": "^0.4.0",
     "grunt-browserify": "^4.0.0",
     "grunt-cli": "^0.1.13",
@@ -12224,7 +12226,8 @@ module.exports={
   "scripts": {
     "server-start": "node test-server.js",
     "build": "npm install -g bower && bower install", 
-    "build-examples": "grunt browserify:example"
+    "build-examples": "grunt browserify:example",
+    "install-examples": "npm install grunt-cli -g && grunt browserify:example" 
   }
 }
 
