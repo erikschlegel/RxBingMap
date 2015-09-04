@@ -1,6 +1,6 @@
 var http = require('http');
 var express = require('express');
-var port = process.env.PORT || 1337;
+var port = 1337;
 
 process.on('uncaughtException', function(err) {
   console.log(err);
