@@ -27,7 +27,6 @@
     "grunt-contrib-watch": "^0.6.1",
     "grunt-mocha-test": "*",
     "grunt-bower-install": "*",
-    "express": "*",
     "jscs": "^2.1.0"
   },
   "dependencies": {
@@ -35,7 +34,7 @@
     "rx": "*",
     "rx-bing-services": "*",
     "rx-dom": "*",
-    "express": "*"
+    "express": "~4.12.4"
   },
   "browserify": {
     "transform": [
