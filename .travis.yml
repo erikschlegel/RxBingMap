@@ -4,5 +4,5 @@ node_js:
 deploy:  
   provider: azure_web_apps
 
-after_install:
+before_script:
   - npm run install-examples
