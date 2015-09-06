@@ -246,21 +246,34 @@ var RxBing = (function () {
 exports['default'] = RxBing;
 module.exports = exports['default'];
 
-},{"./package.json":12,"extend":5,"rx":11,"rx-dom":10}],2:[function(require,module,exports){
-(function (process){
-"use strict";
+},{"./package.json":13,"extend":6,"rx":12,"rx-dom":11}],2:[function(require,module,exports){
+module.exports={
+  "BingMapsApiKey": "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
+  "BingSpatialDataServiceKey": "Aji7ARlyYm81OWlGyWxr8DCdPFhUtbYyAYq1LcAKgFoYh1Q6Dx5Sqvybk8qVTtir"
+}
+},{}],3:[function(require,module,exports){
+'use strict';
 
-Object.defineProperty(exports, "__esModule", {
+Object.defineProperty(exports, '__esModule', {
 	value: true
 });
 exports.mySurroundings = mySurroundings;
+
+function _interopRequireDefault(obj) {
+	return obj && obj.__esModule ? obj : { 'default': obj };
+}
+
+var _configJson = require('../config.json');
+
+var _configJson2 = _interopRequireDefault(_configJson);
+
 var BingServices = require('rx-bing-services');
 
 function mySurroundings(location, responseCB) {
-	if (!process.env.BingSpatialDataServiceKey) throw Error("BingMapsApiKey is not defined error");
+	if (!_configJson2['default'].BingSpatialDataServiceKey) throw Error("BingMapsApiKey is not defined error");
 
 	var rsp = BingServices.whatsAroundMe({
-		apiKey: process.env.BingSpatialDataServiceKey,
+		apiKey: _configJson2['default'].BingSpatialDataServiceKey,
 		location: "{0},{1}".format(location.latitude, location.longitude),
 		top: 30,
 		radius: 1
@@ -276,22 +289,20 @@ function mySurroundings(location, responseCB) {
 
 var _rxBingServices = require('rx-bing-services');
 
-Object.defineProperty(exports, "fromRspToSpatialEntities", {
+Object.defineProperty(exports, 'fromRspToSpatialEntities', {
 	enumerable: true,
 	get: function get() {
 		return _rxBingServices.fromRspToSpatialEntities;
 	}
 });
-Object.defineProperty(exports, "getEntityTypeDetails", {
+Object.defineProperty(exports, 'getEntityTypeDetails', {
 	enumerable: true,
 	get: function get() {
 		return _rxBingServices.getEntityTypeDetails;
 	}
 });
 
-}).call(this,require('_process'))
-},{"_process":4,"rx-bing-services":7}],3:[function(require,module,exports){
-(function (process){
+},{"../config.json":2,"rx-bing-services":8}],4:[function(require,module,exports){
 'use strict';
 
 function _interopRequireDefault(obj) {
@@ -306,12 +317,16 @@ var _rx = require('rx');
 
 var _rx2 = _interopRequireDefault(_rx);
 
+var _configJson = require('../config.json');
+
+var _configJson2 = _interopRequireDefault(_configJson);
+
 var BingServicesImpl = require('./BingSpatialDataService');
 
-if (!process.env.BingMapsApiKey) throw Error("BingMapsApiKey is not defined error");
+if (!_configJson2['default'].BingMapsApiKey) throw Error("BingMapsApiKey is not defined error");
 
 var map = new _RxBingMap2['default']({ MapReferenceId: "mapDiv",
-     credentials: process.env.BingMapsApiKey,
+     credentials: _configJson2['default'].BingMapsApiKey,
      BingTheme: true,
      CenterMap: true,
      ShowTraffic: true });
@@ -354,8 +369,7 @@ var constructMapPin = function constructMapPin(location, icon, tooltipText) {
      return { location: coords, pinOptions: pinOpts };
 };
 
-}).call(this,require('_process'))
-},{"../RxBingMap":1,"./BingSpatialDataService":2,"_process":4,"rx":11}],4:[function(require,module,exports){
+},{"../RxBingMap":1,"../config.json":2,"./BingSpatialDataService":3,"rx":12}],5:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -447,7 +461,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 'use strict';
 
 var hasOwn = Object.prototype.hasOwnProperty;
@@ -535,7 +549,7 @@ module.exports = function extend() {
 };
 
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 module.exports={
   "2084": { "EntityType": "Winery", "icon": "glass" },
   "3578": { "EntityType": "ATM", "icon": "atm" },
@@ -624,7 +638,7 @@ module.exports={
   "9998": { "EntityType": "Hamlet", "icon": "" },
   "9999": { "EntityType": "Border Crossing"} 
 }
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -662,7 +676,7 @@ String.prototype.format = function () {
 		return content;
 };
 
-},{"./whats-around-me":8}],8:[function(require,module,exports){
+},{"./whats-around-me":9}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -781,7 +795,7 @@ function fromRspToSpatialEntities(bingRsp) {
     return bingRsp && bingRsp.response && bingRsp.response.d && bingRsp.response.d.results ? bingRsp.response.d.results : [];
 }
 
-},{"./data/entityTypes.json":6,"./index":7,"extend":5,"rx":11,"rx-dom":10}],9:[function(require,module,exports){
+},{"./data/entityTypes.json":7,"./index":8,"extend":6,"rx":12,"rx-dom":11}],10:[function(require,module,exports){
 (function (global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -1799,11 +1813,11 @@ function normalizeAjaxLoadEvent(e, xhr, settings) {
   return Rx;
 }));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"rx":11}],10:[function(require,module,exports){
+},{"rx":12}],11:[function(require,module,exports){
 var Rx = require('rx');
 require('./dist/rx.dom');
 module.exports = Rx;
-},{"./dist/rx.dom":9,"rx":11}],11:[function(require,module,exports){
+},{"./dist/rx.dom":10,"rx":12}],12:[function(require,module,exports){
 (function (process,global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -12185,7 +12199,7 @@ Rx.Observable.prototype.flatMapWithMaxConcurrent = function(limit, selector, res
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":4}],12:[function(require,module,exports){
+},{"_process":5}],13:[function(require,module,exports){
 module.exports={
   "name": "rx-bing-map",
   "description": "A reactive extension for the Bing maps rendering control",
@@ -12215,14 +12229,14 @@ module.exports={
     "grunt-contrib-watch": "^0.6.1",
     "grunt-mocha-test": "*",
     "grunt-bower-install": "*",
-    "express": "*",
     "jscs": "^2.1.0"
   },
   "dependencies": {
     "extend": "^3.0.0",
     "rx": "*",
     "rx-bing-services": "*",
-    "rx-dom": "*"
+    "rx-dom": "*",
+    "express": "~4.12.4"
   },
   "browserify": {
     "transform": [
@@ -12230,11 +12244,11 @@ module.exports={
     ]
   },
   "scripts": {
-    "server-start": "node test-server.js",
+    "server-start": "node server.js",
     "build": "npm install -g bower && bower install", 
     "build-examples": "grunt browserify:example",
-    "install-examples": "npm install grunt-cli -g && npm install grunt -g && grunt browserify:example" 
+    "install-examples": "npm install grunt-cli -g && grunt browserify:example" 
   }
 }
 
-},{}]},{},[3]);
+},{}]},{},[4]);

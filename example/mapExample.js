@@ -1,12 +1,14 @@
 import RxBingMap from '../RxBingMap';
 import Rx from 'rx';
+import Config from '../config.json'
+
 var BingServicesImpl = require('./BingSpatialDataService');
 
-if(!process.env.BingMapsApiKey)
+if(!Config.BingMapsApiKey)
   throw Error("BingMapsApiKey is not defined error");
 
 var map = new RxBingMap({MapReferenceId: "mapDiv", 
-					  credentials: process.env.BingMapsApiKey, 
+					  credentials: Config.BingMapsApiKey, 
 					  BingTheme: true,
 					  CenterMap: true,
 					  ShowTraffic: true});
