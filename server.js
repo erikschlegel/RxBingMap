@@ -1,6 +1,7 @@
 var http = require('http');
 var express = require('express');
 var server = express();
+var configUtils = require('./lib/configUtils');
 
 server.use(express.static(__dirname));
 
@@ -10,3 +11,8 @@ server.listen(port, function() {
     //var err = new Error('This error won't break the application...')
     //throw err
 });
+
+if(!process.env.configLoaded){
+	configUtils.load();
+	process.env.configLoaded = true;
+}
