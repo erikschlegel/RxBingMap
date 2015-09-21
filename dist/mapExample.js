@@ -246,11 +246,8 @@ var RxBing = (function () {
 exports['default'] = RxBing;
 module.exports = exports['default'];
 
-},{"./package.json":13,"extend":6,"rx":12,"rx-dom":11}],2:[function(require,module,exports){
-module.exports={
-  "BingMapsApiKey": "AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5",
-  "BingSpatialDataServiceKey": "Aji7ARlyYm81OWlGyWxr8DCdPFhUtbYyAYq1LcAKgFoYh1Q6Dx5Sqvybk8qVTtir"
-}
+},{"./package.json":14,"extend":6,"rx":13,"rx-dom":12}],2:[function(require,module,exports){
+module.exports={"BingMapsApiKey":"AhbduxsPGweqi8L2tFcVTOM8o7yfT74gWSQw1mC8yTUyDVdePCF7cWJVFXq1wgl5","BingServiceKey":"Aji7ARlyYm81OWlGyWxr8DCdPFhUtbYyAYq1LcAKgFoYh1Q6Dx5Sqvybk8qVTtir"}
 },{}],3:[function(require,module,exports){
 'use strict';
 
@@ -258,6 +255,7 @@ Object.defineProperty(exports, '__esModule', {
 	value: true
 });
 exports.mySurroundings = mySurroundings;
+exports.whereAmI = whereAmI;
 
 function _interopRequireDefault(obj) {
 	return obj && obj.__esModule ? obj : { 'default': obj };
@@ -270,10 +268,10 @@ var _configJson2 = _interopRequireDefault(_configJson);
 var BingServices = require('rx-bing-services');
 
 function mySurroundings(location, responseCB) {
-	if (!_configJson2['default'].BingSpatialDataServiceKey) throw Error("BingMapsApiKey is not defined error");
+	if (!_configJson2['default'].BingServiceKey) throw Error("BingServiceKey is not defined error");
 
 	var rsp = BingServices.whatsAroundMe({
-		apiKey: _configJson2['default'].BingSpatialDataServiceKey,
+		apiKey: _configJson2['default'].BingServiceKey,
 		location: "{0},{1}".format(location.latitude, location.longitude),
 		top: 30,
 		radius: 1
@@ -287,12 +285,28 @@ function mySurroundings(location, responseCB) {
 	});
 }
 
+function whereAmI(location, responseCB) {
+	if (!_configJson2['default'].BingServiceKey) throw Error("BingServiceKey is not defined error");
+
+	var rsp = BingServices.whereAmI({
+		apiKey: _configJson2['default'].BingServiceKey,
+		location: "{0},{1}".format(location.latitude, location.longitude)
+	}, {
+		// Request validation error occured
+		error: function error(e) {
+			console.log('Received a validation error:\n', e);
+		}
+	}).subscribe(responseCB, function (error) {
+		console.log("There was an error with the bing service call: " + error);
+	});
+}
+
 var _rxBingServices = require('rx-bing-services');
 
-Object.defineProperty(exports, 'fromRspToSpatialEntities', {
+Object.defineProperty(exports, 'fromResponseToSpatialEntities', {
 	enumerable: true,
 	get: function get() {
-		return _rxBingServices.fromRspToSpatialEntities;
+		return _rxBingServices.fromResponseToSpatialEntities;
 	}
 });
 Object.defineProperty(exports, 'getEntityTypeDetails', {
@@ -301,12 +315,18 @@ Object.defineProperty(exports, 'getEntityTypeDetails', {
 		return _rxBingServices.getEntityTypeDetails;
 	}
 });
+Object.defineProperty(exports, 'fromResponeToLocationResources', {
+	enumerable: true,
+	get: function get() {
+		return _rxBingServices.fromResponeToLocationResources;
+	}
+});
 
 },{"../config.json":2,"rx-bing-services":8}],4:[function(require,module,exports){
 'use strict';
 
 function _interopRequireDefault(obj) {
-     return obj && obj.__esModule ? obj : { 'default': obj };
+    return obj && obj.__esModule ? obj : { 'default': obj };
 }
 
 var _RxBingMap = require('../RxBingMap');
@@ -326,50 +346,61 @@ var BingServicesImpl = require('./BingSpatialDataService');
 if (!_configJson2['default'].BingMapsApiKey) throw Error("BingMapsApiKey is not defined error");
 
 var map = new _RxBingMap2['default']({ MapReferenceId: "mapDiv",
-     credentials: _configJson2['default'].BingMapsApiKey,
-     BingTheme: true,
-     CenterMap: true,
-     ShowTraffic: true });
-
-map.registerMapHandlers({ click: function click(result) {
-          if (result.targetType == "map") {
-               map.clearEntities(); //Avoid your browser dying slow and painfully
-               var point = new Microsoft.Maps.Point(result.getX(), result.getY());
-               var loc = result.target.tryPixelToLocation(point);
-               map.pushPins([constructMapPin(loc, '', "Location for {0},{1}".format(loc.latitude, loc.longitude))]);
-
-               //Call Whats around me to pin your surroundings
-               BingServicesImpl.mySurroundings(loc, function (response) {
-                    _rx2['default'].Observable.from(BingServicesImpl.fromRspToSpatialEntities(response)).subscribe(function (entity) {
-                         var entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
-                         map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b><u>{0}</u></b>: {1}<br>{2} {3},{4} {5}".format(entityInfo.EntityType, entity.DisplayName, entity.AddressLine, entity.Locality, entity.AdminDistrict, entity.PostalCode))]);
-                    }, function (error) {
-                         return console.log('An error occured converting the response into an observable: ' + error);
-                    });
-               });
-          }
-     } });
+    credentials: _configJson2['default'].BingMapsApiKey,
+    BingTheme: true,
+    CenterMap: true,
+    ShowTraffic: false });
 
 var constructMapPin = function constructMapPin(location, icon, tooltipText) {
-     var coords = {
-          'latitude': location.latitude,
-          'longitude': location.longitude
-     };
+    var coords = {
+        'latitude': location.latitude,
+        'longitude': location.longitude
+    };
 
-     var pinOpts = {
-          draggable: false,
-          tooltipText: tooltipText,
-          height: 40,
-          width: 40,
-          textOffset: new Microsoft.Maps.Point(0, 0)
-     };
+    var pinOpts = {
+        draggable: false,
+        tooltipText: tooltipText,
+        height: 40,
+        width: 40,
+        textOffset: new Microsoft.Maps.Point(0, 0)
+    };
 
-     if (icon) pinOpts['icon'] = '/lib/images/' + icon + '.png';
+    if (icon) pinOpts['icon'] = '/lib/images/' + icon + '.png';
 
-     return { location: coords, pinOptions: pinOpts };
+    return { location: coords, pinOptions: pinOpts };
 };
 
-},{"../RxBingMap":1,"../config.json":2,"./BingSpatialDataService":3,"rx":12}],5:[function(require,module,exports){
+//Call where am I to pin your current location
+var whereAmiCall = function whereAmiCall(coords, mapReference) {
+    BingServicesImpl.whereAmI(coords, function (response) {
+        _rx2['default'].Observable.from(BingServicesImpl.fromResponeToLocationResources(response)).subscribe(function (location) {
+            mapReference.pushPins([constructMapPin(coords, '', "<b><u>Location</u></b>: {2}<br>Coordinates {0},{1}".format(location.point.coordinates[0], location.point.coordinates[1], location.name))]);
+        }, function (error) {
+            console.log("There was an error: " + error);
+        });
+    });
+};
+
+map.registerMapHandlers({ click: function click(result) {
+        if (result.targetType == "map") {
+            map.clearEntities(); //Avoid your browser dying slow and painfully
+            var point = new Microsoft.Maps.Point(result.getX(), result.getY());
+            var loc = result.target.tryPixelToLocation(point);
+
+            whereAmiCall(loc, map);
+            //Call Whats around me to pin your surroundings
+            BingServicesImpl.mySurroundings(loc, function (response) {
+                _rx2['default'].Observable.from(BingServicesImpl.fromResponseToSpatialEntities(response)).subscribe(function (entity) {
+                    var entityInfo = BingServicesImpl.getEntityTypeDetails(entity.EntityTypeID);
+                    map.pushPins([constructMapPin({ latitude: entity.Latitude, longitude: entity.Longitude }, entityInfo.icon, "<b><u>{0}</u></b>: {1}<br>{2} {3},{4} {5}".format(entityInfo.EntityType, entity.DisplayName, entity.AddressLine, entity.Locality, entity.AdminDistrict, entity.PostalCode))]);
+                }, function (error) {
+                    return console.log('An error occured converting the response into an observable: ' + error);
+                });
+            });
+        }
+    } });
+
+},{"../RxBingMap":1,"../config.json":2,"./BingSpatialDataService":3,"rx":13}],5:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -402,7 +433,9 @@ function drainQueue() {
         currentQueue = queue;
         queue = [];
         while (++queueIndex < len) {
-            currentQueue[queueIndex].run();
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
         }
         queueIndex = -1;
         len = queue.length;
@@ -454,7 +487,6 @@ process.binding = function (name) {
     throw new Error('process.binding is not supported');
 };
 
-// TODO(shtylman)
 process.cwd = function () { return '/' };
 process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
@@ -654,6 +686,10 @@ var _whatsAroundMe = require('./whats-around-me');
 
 _defaults(exports, _interopExportWildcard(_whatsAroundMe, _defaults));
 
+var _whereIsThis = require('./where-is-this');
+
+_defaults(exports, _interopExportWildcard(_whereIsThis, _defaults));
+
 function validateInput(supportedInputs, requestedInputs) {
 		var errorSet = new Set();
 
@@ -676,7 +712,7 @@ String.prototype.format = function () {
 		return content;
 };
 
-},{"./whats-around-me":9}],9:[function(require,module,exports){
+},{"./whats-around-me":9,"./where-is-this":10}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -684,7 +720,7 @@ Object.defineProperty(exports, '__esModule', {
 });
 exports.whatsAroundMe = whatsAroundMe;
 exports.getEntityTypeDetails = getEntityTypeDetails;
-exports.fromRspToSpatialEntities = fromRspToSpatialEntities;
+exports.fromResponseToSpatialEntities = fromResponseToSpatialEntities;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -791,11 +827,73 @@ function getEntityTypeDetails(entityTypeId) {
 
 ;
 
-function fromRspToSpatialEntities(bingRsp) {
+function fromResponseToSpatialEntities(bingRsp) {
     return bingRsp && bingRsp.response && bingRsp.response.d && bingRsp.response.d.results ? bingRsp.response.d.results : [];
 }
 
-},{"./data/entityTypes.json":7,"./index":8,"extend":6,"rx":12,"rx-dom":11}],10:[function(require,module,exports){
+},{"./data/entityTypes.json":7,"./index":8,"extend":6,"rx":13,"rx-dom":12}],10:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+      value: true
+});
+exports.whereAmI = whereAmI;
+exports.fromResponeToLocationResources = fromResponeToLocationResources;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _rx = require('rx');
+
+var _rx2 = _interopRequireDefault(_rx);
+
+var _rxDom = require('rx-dom');
+
+var _rxDom2 = _interopRequireDefault(_rxDom);
+
+var _extend = require('extend');
+
+var _extend2 = _interopRequireDefault(_extend);
+
+var _index = require('./index');
+
+var serviceUrl = "http://dev.virtualearth.net/REST/v1/Locations/{0},{1}?inclnb=1&o=json&key={2}&$format=json&jsonp=JSONPCallback";
+
+var supportedInputs = {
+      apiKey: {
+            example: '232edfdnfddf4450',
+            description: 'Your api access key to access bing data services. This can be obtained at https://msdn.microsoft.com/en-us/library/ff428642.aspx',
+            required: true
+      },
+      location: {
+            example: '34.23245532,-40.47464. {latitude},{longitude}',
+            description: 'The users latitude and longitude',
+            required: true
+      }
+};
+
+function whereAmI(input, exits) {
+      var errors = (0, _index.validateInput)(supportedInputs, input);
+      if (errors.size > 0) return exits.error({ description: 'input validation failed', errorSet: errors });
+
+      if (!validateRequest(input)) return exits.error({ description: 'request failed validation check' });
+
+      var coords = input.location.split(',');
+      var BingURL = serviceUrl.format(coords[0], coords[1], input.apiKey);
+
+      return _rx2['default'].DOM.jsonpRequest({ url: BingURL, jsonp: 'JSONPCallback' });
+}
+
+;
+
+var validateRequest = function validateRequest(input) {
+      return input.location.split(',').length == 2;
+};
+
+function fromResponeToLocationResources(bingRsp) {
+      return bingRsp && bingRsp.response && bingRsp.response.resourceSets && bingRsp.response.resourceSets.length > 0 ? bingRsp.response.resourceSets[0].resources : [];
+}
+
+},{"./index":8,"extend":6,"rx":13,"rx-dom":12}],11:[function(require,module,exports){
 (function (global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -1813,11 +1911,11 @@ function normalizeAjaxLoadEvent(e, xhr, settings) {
   return Rx;
 }));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"rx":12}],11:[function(require,module,exports){
+},{"rx":13}],12:[function(require,module,exports){
 var Rx = require('rx');
 require('./dist/rx.dom');
 module.exports = Rx;
-},{"./dist/rx.dom":10,"rx":12}],12:[function(require,module,exports){
+},{"./dist/rx.dom":11,"rx":13}],13:[function(require,module,exports){
 (function (process,global){
 // Copyright (c) Microsoft Open Technologies, Inc. All rights reserved. See License.txt in the project root for license information.
 
@@ -12199,7 +12297,7 @@ Rx.Observable.prototype.flatMapWithMaxConcurrent = function(limit, selector, res
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":5}],13:[function(require,module,exports){
+},{"_process":5}],14:[function(require,module,exports){
 module.exports={
   "name": "rx-bing-map",
   "description": "A reactive extension for the Bing maps rendering control",
