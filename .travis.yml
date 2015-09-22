@@ -1,8 +1,10 @@
 language: node_js
 node_js:
   - "0.10"
-deploy:  
+deploy:
   provider: azure_web_apps
 
 before_script:
   - npm run install-examples
+  - git add --all
+  - git commit -m "Build file"
