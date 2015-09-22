@@ -6,7 +6,3 @@ deploy:
 
 before_script:
   - npm run install-examples
-  - git config --global user.email "erk.schlegel@gmail.com"
-  - git config --global user.name "erik schlegel"
-  - git add --all
-  - git commit -m "Build file"
