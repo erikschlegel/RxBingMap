@@ -14,5 +14,14 @@ server.listen(port, function() {
 
 if(!process.env.configLoaded){
 	configUtils.load();
-	process.env.configLoaded = true;
+  var execFile = require('child_process').exec;
+  var cmd = "grunt browserify:example";
+  execFile(cmd, function(error, stdout, stderr) {
+    console.log('stdout: ' + stdout);
+    console.log('stderr: ' + stderr);
+    if (error != null) {
+      console.log('exec error: ' + error);
+    }
+    process.env.configLoaded = true;
+  });
 }
