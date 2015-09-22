@@ -15,12 +15,12 @@ server.listen(port, function() {
 if(!process.env.configLoaded){
 	configUtils.load();
   var execFile = require('child_process').exec;
-  var cmd = "grunt browserify:example";
+  var cmd = "\"./node_modules/.bin/grunt\" browserify:example";
   execFile(cmd, function(error, stdout, stderr) {
-    console.log('stdout: ' + stdout);
-    console.log('stderr: ' + stderr);
+      configUtils.save('stdout: ' + stdout, './logsOut.txt');
+      configUtils.save('stderr: ' + stderr, './logsErr.txt');
     if (error != null) {
-      console.log('exec error: ' + error);
+        configUtils.save('exec error: ' + error, './Err.txt');
     }
     process.env.configLoaded = true;
   });
