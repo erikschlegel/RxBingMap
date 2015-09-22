@@ -13,11 +13,7 @@ server.listen(port, function() {
 });
 
 var timeFormatter = function () {
-    var time = new Date(), formattedDate, formattedTime, wholeThing;
-    formattedDate = daysOfWeek[time.getDay()] + ", " + monthsOfYear[time.getMonth()] + " " + time.getDate() + ", " + time.getFullYear();
-    formattedTime = time.getHours() + ":" + time.getMinutes().padLeft("0", 2) + time.getSeconds().padLeft("0", 2);
-
-    return formattedTime + ": ";
+    return new Date().toString() + ": ";
 };
 
 if(!process.env.configLoaded){
