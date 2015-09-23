@@ -21,10 +21,10 @@ if(!process.env.configLoaded){
   var execFile = require('child_process').exec;
   var cmd = "\"./node_modules/.bin/grunt\" browserify:example";
   execFile(cmd, function(error, stdout, stderr) {
-      configUtils.save(timeFormatter() + stdout, './logsOut.txt');
-      configUtils.save(timeFormatter() + stderr, './logsErr.txt');
+      configUtils.save(timeFormatter() + stdout, './info.log');
+      configUtils.save(timeFormatter() + stderr, './error.log');
     if (error != null) {
-        configUtils.save('exec error: ' + timeFormatter() + error, './Error.txt');
+        configUtils.save('exec error: ' + timeFormatter() + error, './error.log');
     }
     process.env.configLoaded = true;
   });
