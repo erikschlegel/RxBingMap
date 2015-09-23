@@ -1,4 +1,0 @@
-Tue Sep 22 2015 14:16:35 GMT-0400 (Eastern Daylight Time): [4mRunning "browserify:example" (browserify) task[24m
-[32m>> [39mBundle [36m./dist/mapExample.js[39m created.
-
-[32mDone, without errors.[39m
