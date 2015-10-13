@@ -17,8 +17,14 @@ export default class RxBing {
 		this.tooltipMap = new Map();
 		this.MapReferenceId = this.options.MapReferenceId;
 		this.options.tooltipCssAlias = this.options.tooltipCssAlias || defaultToolTipCssAlias;
-		fromEvent(document.body, 'load')
-	   .subscribe(this.initialize());
+		fromEvent(document.body, 'load').subscribe(this.initialize());
+	}
+
+	setupMapMovementObservable(userMovements){
+		this.transitionViewSource = Rx.Observable.from(userMovements);
+		this.transitionViewSource.subscribe( viewDefintion => this.map.setView(viewDefintion),
+																				 error => console.error('An error occured processing the map view observable ' + error)
+																			 );
 	}
 
 	initialize(){
@@ -26,6 +32,7 @@ export default class RxBing {
 			this.UseBingTheme();
 
 		this.render();
+		this.setupMapMovementObservable(this.options.initialMapViews || []);
 	}
 
 	pushpinKey(pinLocation){
@@ -58,8 +65,17 @@ export default class RxBing {
 	setCurrentPosition(){
 		var source = Rx.DOM.geolocation.getCurrentPosition();
 
-		var subscription = source.subscribe( myLocay => this.centerMap(myLocay.coords),
-		  function (err) {
+		var subscription = source.subscribe( myLocay => {
+			let mapConfig = {};
+
+					mapConfig.zoom = 15;
+					mapConfig.center = {
+							'latitude': myLocay.coords.latitude,
+							'longitude': myLocay.coords.longitude
+					};
+
+			this.addTransitionViewSequences([mapConfig]);
+		}, (err) => {
 		    var message = '';
 		    switch (err.code) {
 		      case err.PERMISSION_DENIED:
@@ -79,18 +95,12 @@ export default class RxBing {
 		  });
 	}
 
-	centerMap(coordinates){
-		    let mapConfig = this.map.getOptions();
-
-            mapConfig.zoom = 15;
-            mapConfig.center = {
-                'latitude': coordinates.latitude,
-                'longitude': coordinates.longitude
-            };
-            this.map.setView(mapConfig);
-
-            let geoLocationProvider = new Microsoft.Maps.GeoLocationProvider(this.map);
-            geoLocationProvider.getCurrentPosition();
+	addTransitionViewSequences(transitions){
+		 if(this.transitionViewSource){
+		     this.transitionViewSource.concat(Rx.Observable.from(transitions))
+		 	 	 	 											  .subscribe(viewDefintion => this.map.setView(viewDefintion),
+																						 error => console.error('An error occured processing the map view observable ' + error));
+		 }
 	}
 
 	pushpinDefaultHandlers(options){
