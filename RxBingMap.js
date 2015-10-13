@@ -15,7 +15,7 @@ export default class RxBing {
 		let fromEvent = Rx.Observable.fromEvent;
 		this.mapElement = args.length == 1 ? document.getElementById(this.options.MapReferenceId) : args[1];
 		this.tooltipMap = new Map();
-		this.MapReferenceId = options.MapReferenceId;
+		this.MapReferenceId = this.options.MapReferenceId;
 		this.options.tooltipCssAlias = this.options.tooltipCssAlias || defaultToolTipCssAlias;
 		fromEvent(document.body, 'load')
 	   .subscribe(this.initialize());
@@ -133,18 +133,23 @@ export default class RxBing {
 		this.tooltipMap.clear();
 	}
 
+	createPushpin(pinDef, customHandlers){
+		if(pinDef.location){
+			this.createTooltip(pinDef, this.map);
+			var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions || {});
+			this.registerRxEventSequence(extend(true, {}, this.pushpinDefaultHandlers(this.options), customHandlers || {}), newPin);
+			this.map.entities.push(newPin);
+
+			return newPin;
+		}else{
+			console.error('Unable to add pin due to unprovided coords');
+		}
+	}
+
 	pushPins(pinSet, customHandlers){
 		let source = Rx.Observable.from(pinSet)
 					.subscribe( (pinDef) => {
-							if(pinDef.location && pinDef.pinOptions){
- 								this.createTooltip(pinDef, this.map);
- 								var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions);
-								this.registerRxEventSequence(extend(true, {}, this.pushpinDefaultHandlers(this.options), customHandlers || {}), newPin);
-								this.map.entities.push(newPin);
-							}else{
-								console.error('Unable to add pin due to unprovided coords and/or opts');
-							}
-
+							this.createPushpin(pinDef, customHandlers);
 					} , (error) => console.log('An error occured adding the pin set to the map: ' + error));
 	}
 
