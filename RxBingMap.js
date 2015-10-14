@@ -60,22 +60,30 @@ export default class RxBing {
 				this.tooltipMap.set(infoBoxKey, pinInfobox);
 				this.map.entities.push(pinInfobox);
 			}
-    }
+  }
+
+	static RxToBingMapViewDefintion(rxLocation){
+		let mapConfig = {};
+				if(rxLocation){
+					mapConfig.zoom = 15;
+					mapConfig.animate = true;
+					mapConfig.center = {
+							'latitude': rxLocation.coords.latitude,
+							'longitude': rxLocation.coords.longitude
+					};
+
+					if(rxLocation.coords.heading != null)
+					   mapConfig.heading = rxLocation.coords.heading;
+				}
+
+			return mapConfig;
+	}
 
 	setCurrentPosition(){
 		var source = Rx.DOM.geolocation.getCurrentPosition();
 
-		var subscription = source.subscribe( myLocay => {
-			let mapConfig = {};
-
-					mapConfig.zoom = 15;
-					mapConfig.center = {
-							'latitude': myLocay.coords.latitude,
-							'longitude': myLocay.coords.longitude
-					};
-
-			this.addTransitionViewSequences([mapConfig]);
-		}, (err) => {
+		var subscription = source.subscribe( myLocay => this.addTransitionViewSequences([RxBing.RxToBingMapViewDefintion(myLocay)]),
+		  (err) => {
 		    var message = '';
 		    switch (err.code) {
 		      case err.PERMISSION_DENIED:
