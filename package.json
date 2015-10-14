@@ -1,7 +1,7 @@
 {
   "name": "rx-bing-map",
   "description": "A reactive extension for the Bing maps rendering control",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "license": "MIT",
   "main": "./RxBingMap.js",
   "repository": "erikschlegel/RxBing",
