@@ -9,6 +9,7 @@ if(!Config.BingMapsApiKey)
 
 var map = new RxBingMap({MapReferenceId: "mapDiv",
 					  credentials: Config.BingMapsApiKey,
+            ServiceAPIKey: Config.BingServiceKey,
 					  BingTheme: true,
 					  CenterMap: true,
 					  ShowTraffic: false});
@@ -21,14 +22,16 @@ let constructMapPin = function(location, icon, tooltipText){
 
                  let pinOpts = {
                      draggable: false,
-                     tooltipText: tooltipText,
                      height: 40,
                      width: 40,
                      textOffset: new Microsoft.Maps.Point(0, 0)
                  };
 
+                 if(tooltipText)
+                   pinOpts['tooltipText'] = tooltipText;
+
                  if(icon)
-                    pinOpts['icon'] = '/lib/images/' + icon + '.png'
+                    pinOpts['icon'] = '/lib/images/' + icon + '.png';
 
                  return {location: coords, pinOptions: pinOpts};
 };
@@ -38,7 +41,9 @@ let whereAmiCall = (coords, mapReference) => {
   BingServicesImpl.whereAmI(coords, (response) => {
           Rx.Observable.from(BingServicesImpl.fromResponeToLocationResources(response))
                       .subscribe((location) => {
-                          mapReference.pushPins([constructMapPin(coords, '', "<b><u>Location</u></b>: {2}<br>Coordinates {0},{1}".format(location.point.coordinates[0], location.point.coordinates[1], location.name))]);
+                          let newPin = constructMapPin(coords, '');
+                          newPin.pinOptions.locationServiceCB = (location) => "<b><u>Bing Service Location</u></b>: {2}<br>Coordinates {0},{1}".format(location.point.coordinates[0], location.point.coordinates[1], location.name);
+                          mapReference.pushPins([newPin]);
                       },
                       (error) => {
                              console.log("There was an error: " + error);

@@ -2,6 +2,7 @@ import pkg from './package.json';
 import Rx from 'rx';
 import RxDom from 'rx-dom';
 import extend from 'extend';
+var BingServices = require('rx-bing-services');
 
 const defaultToolTipCssAlias = 'tooltip';
 //only way to make a function a private member in ES6 classes, until ES7 is out and supports 'private'.
@@ -153,14 +154,40 @@ export default class RxBing {
 
 	createPushpin(pinDef, customHandlers){
 		if(pinDef.location){
-			this.createTooltip(pinDef, this.map);
-			var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions || {});
-			this.registerRxEventSequence(extend(true, {}, this.pushpinDefaultHandlers(this.options), customHandlers || {}), newPin);
-			this.map.entities.push(newPin);
+			  this.lookupPinLocation(pinDef, "{0},{1}".format(pinDef.location.latitude, pinDef.location.longitude));
+				this.createTooltip(pinDef, this.map);
+				var newPin = new Microsoft.Maps.Pushpin(pinDef.location, pinDef.pinOptions || {});
+				this.registerRxEventSequence(extend(true, {}, this.pushpinDefaultHandlers(this.options), customHandlers || {}), newPin);
+				this.map.entities.push(newPin);
 
 			return newPin;
 		}else{
 			console.error('Unable to add pin due to unprovided coords');
+		}
+	}
+
+ lookupPinLocation(pinDef, coordinates){
+		let callback = pinDef.pinOptions.locationServiceCB || this.options.locationServiceCB;
+
+		if(this.options.ServiceAPIKey && callback){
+			  pinDef.pinOptions.tooltipText = false;
+
+				let rsp = BingServices.whereAmI({
+						apiKey: this.options.ServiceAPIKey,
+						location: coordinates
+				} , {
+					error: function (e){
+						console.log('Received a validation error:\n', e);
+					}
+				}).subscribe((rspSequence) => {
+					Rx.Observable.from(BingServices.fromResponeToLocationResources(rspSequence))
+											 .subscribe(location => {
+												                       pinDef.pinOptions.tooltipText = callback(location);
+																							 this.createTooltip(pinDef, this.map);
+																						  });
+					},
+					error => console.log("There was an error with retreiving location {0}. Error: {1}".format(coordinates, error))
+				);
 		}
 	}
 
@@ -202,3 +229,13 @@ export default class RxBing {
 		}
 	}
 }
+
+String.prototype.format = function(){
+   var content = this;
+   for (var i=0; i < arguments.length; i++)
+   {
+        var replacement = '{' + i + '}';
+        content = content.replace(replacement, arguments[i]);
+   }
+   return content;
+};
