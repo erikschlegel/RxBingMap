@@ -107,9 +107,11 @@ export default class RxBing {
 
 	addTransitionViewSequences(transitions){
 		 if(this.transitionViewSource){
-		     this.transitionViewSource.concat(Rx.Observable.from(transitions))
-		 	 	 	 											  .subscribe(viewDefintion => this.map.setView(viewDefintion),
-																						 error => console.error('An error occured processing the map view observable ' + error));
+			   const mergedSource = Rx.Observable.concat(this.transitionViewSource, Rx.Observable.from(transitions));
+				 var self = this;
+		     mergedSource.filter(movement => (movement.center))
+				 						 .subscribe(viewDefintion => self.map.setView(viewDefintion),
+															  error => console.error('An error occured processing the map view observable ' + error));
 		 }
 	}
 
