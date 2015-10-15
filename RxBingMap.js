@@ -48,7 +48,8 @@ export default class RxBing {
 		Object.keys(customHandlers).forEach((eventName) => {
 		   if(customHandlers.hasOwnProperty(eventName) && typeof customHandlers[eventName] === "function"){
 		   		var RxSource = this.transformBingEventsToRxStream(srcObject, eventName);
- 			    RxSource.subscribe(customHandlers[eventName], (error) => console.log('Event Handler occured for ' + eventName + ' Err: ' + error));
+					//Microsoft.Maps.Events.addHandler(srcObject, eventName, customHandlers[eventName]);
+					RxSource.subscribe(customHandlers[eventName], (error) => console.log('Event Handler occured for ' + eventName + ' Err: ' + error));
 	  	   }
 		});
 	}
@@ -117,16 +118,18 @@ export default class RxBing {
 			mouseover: (ev) => {
 				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
 					let pin = ev.target;
+					ev.originalEvent.stopPropagation();
 					this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: true});
 					//$(ev.originalEvent.relatedTarget).fadeIn('200');
 				}
 			},
 			mouseout: (ev) => {
 				if(ev.targetType === 'pushpin' && this.tooltipMap.has(this.pushpinKey(ev.target._location))){
-					var tooltip = document.getElementById(this.pushpinKey(ev.target._location));
+					let pin = ev.target;
+					ev.originalEvent.stopPropagation();
 					//$(tooltip).fadeOut("slow");
-					tooltip.classList.add('fade-out');
-					//this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
+					//pin.classList.add('fade-out');
+					this.tooltipMap.get(this.pushpinKey(pin._location)).setOptions({visible: false});
 				}
 			}
 		}
